@@ -1,0 +1,61 @@
+// Apparaatsleutels: zo roept een machine (een server, een Pi, een script) de servercode aan
+// zonder als mens in te loggen. Het apparaat stuurt zijn eigen sleutel mee in de kop
+// `x-apparaat-sleutel`. In de repo staat alleen de vingerafdruk van die sleutel (SHA-256), in
+// worker/apparaten.json. Daaruit is de sleutel niet terug te rekenen, dus dat bestand mag
+// openbaar zijn. De sleutel zelf staat alleen op het apparaat.
+//
+// Het pad dat het apparaat aanroept staat in toegang.json van de beheer-repo als publiek: de
+// deur (Access) laat het door, en deze controle doet het werk van de deur.
+//
+// Een apparaat toevoegen: `pnpm apparaat:nieuw <naam>` (zet de vingerafdruk erbij en toont de
+// sleutel één keer). Intrekken: `pnpm apparaat:nieuw -- --intrekken <naam>`. Het werkt na de
+// merge, als de app opnieuw is uitgerold.
+//
+// In een route: `const apparaat = await welkApparaat(c.req.raw, ["pi-kantoor"])`; null = weigeren.
+import lijst from "../apparaten.json";
+
+export type Apparaat = { naam: string; sha256: string };
+
+export const KOP = "x-apparaat-sleutel";
+/** Korter dan dit is geen sleutel van `pnpm apparaat:nieuw` (32 bytes, base64url). */
+export const MINIMALE_LENGTE = 40;
+
+/** De vingerafdruk (SHA-256, hex) van een sleutel. */
+export async function vingerafdruk(sleutel: string): Promise<string> {
+  const hash = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sleutel));
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Vergelijkt zonder vroeg te stoppen, zodat de duur niets verraadt. */
+function gelijk(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let verschil = 0;
+  for (let i = 0; i < a.length; i += 1) verschil |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return verschil === 0;
+}
+
+/**
+ * De naam van het apparaat dat dit verzoek doet, of null als de sleutel niet klopt of het
+ * apparaat niet bij `toegestaan` hoort. Noem altijd welke apparaten deze functie mogen
+ * gebruiken: anders kan elk apparaat uit de lijst elke functie aanroepen.
+ */
+export async function welkApparaat(
+  request: Request,
+  toegestaan: readonly string[],
+  apparaten: Apparaat[] = lijst.apparaten,
+): Promise<string | null> {
+  const sleutel = request.headers.get(KOP) ?? "";
+  if (sleutel.length < MINIMALE_LENGTE) return null;
+  const afdruk = await vingerafdruk(sleutel);
+  let gevonden: string | null = null;
+  for (const a of apparaten) if (gelijk(afdruk, a.sha256.toLowerCase())) gevonden = a.naam;
+  return gevonden && toegestaan.includes(gevonden) ? gevonden : null;
+}
+
+/** Een 401-antwoord voor een verzoek zonder geldige apparaatsleutel. */
+export function geenToegang(): Response {
+  return new Response(JSON.stringify({ error: "Geen geldige apparaatsleutel" }), {
+    status: 401,
+    headers: { "content-type": "application/json" },
+  });
+}

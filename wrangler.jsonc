@@ -1,0 +1,57 @@
+// Hoe deze app op Cloudflare draait (stack-light). `name`, het eigen domein en de id's van
+// de database en de bestanden zijn van dit project; de andere regels gelden voor elke app in
+// de stack en worden gecontroleerd door scripts/lib/cloudflare-config.mjs (check
+// guard:cloudflare).
+//
+// De id's hieronder vult de inrichting in (workflow App inrichten in de beheer-repo), met een
+// pull request. Zolang er nullen staan, is de app nog niet ingericht en slaat de uitrol over.
+//
+// Twee standen, zie docs/WERKWIJZE.md:
+//   standaard  "workers_dev": false plus een route met "custom_domain": true.
+//   tijdelijk  "workers_dev": true en geen "routes", alleen zolang er nog geen eigen domein is.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "light-proef",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "not_found_handling": "single-page-application",
+    // /api gaat altijd naar de servercode, ook als er toevallig een bestand zo heet.
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+  // Tijdelijke stand: nog geen eigen domein. Komt er een domein: false, plus de route hieronder.
+  "workers_dev": true,
+  "preview_urls": true,
+  // Standaardstand, zodra er een eigen domein is:
+  // "routes": [{ "pattern": "<app>.<domein>", "custom_domain": true }],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "light-proef",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "BESTANDEN", "bucket_name": "light-proef", "jurisdiction": "eu" }],
+  // Geplande taken (Cloudflare-cron), bijvoorbeeld elke ochtend om 7 uur (UTC):
+  // "triggers": { "crons": ["0 7 * * *"] },
+  "env": {
+    // De previews van pull requests: een eigen database en eigen bestanden, nooit die van
+    // productie. De uitrol van een preview gebruikt altijd deze omgeving uit main.
+    "preview": {
+      "vars": { "OMGEVING": "test" },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "light-proef-test",
+          "database_id": "00000000-0000-0000-0000-000000000001",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [
+        { "binding": "BESTANDEN", "bucket_name": "light-proef-test", "jurisdiction": "eu" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,166 @@
+name: Preview uitrollen
+
+# Het tweede deel van de preview per pull request. De job "Preview" in uitrollen.yml
+# bouwt de PR zonder sleutels en bewaart de gebouwde schermen en servercode als artifact. Deze workflow draait daarna,
+# altijd in de versie van main (zo werkt workflow_run), en is de enige die de
+# preview-sleutel ziet. Daarom mag de omgeving preview tot main beperkt zijn, en kan
+# code uit een PR nooit bij een Cloudflare-sleutel.
+#
+# Wat hier gebeurt, vertrouwt niets uit de PR: de code en de installatie komen van
+# main, het artifact wordt alleen uitgepakt en als code naar de Worker `<app>-preview`
+# gestuurd (er draait hier niets uit), de config met de opslag komt uit main, en het
+# PR-nummer komt uit de gebeurtenis van GitHub, niet uit het artifact. De servercode uit de
+# PR draait dus wel bij Cloudflare, maar alleen met de testdatabase en de testbestanden.
+on:
+  workflow_run:
+    workflows: [Uitrollen]
+    types: [completed]
+
+concurrency:
+  group: preview-uitrollen-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    name: Preview
+    # Alleen een geslaagde run voor een PR uit deze repo: een fork krijgt geen preview.
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    environment: preview
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    steps:
+      - name: PR-nummer bepalen
+        id: pr
+        env:
+          PR: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          if ! [[ "$PR" =~ ^[0-9]+$ ]]; then
+            echo "::notice::Deze run hoort niet bij een pull request uit deze repo. Er komt geen preview."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "nummer=$PR" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Is er iets gebouwd?
+        id: artifact
+        if: steps.pr.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          # De PR-job bewaart niets als de preview-instellingen ontbreken; hij meldt dat zelf al.
+          aantal=$(gh api "repos/$REPO/actions/runs/$RUN_ID/artifacts" \
+            --jq '[.artifacts[] | select(.name == "preview-dist" and (.expired | not))] | length')
+          if [ "$aantal" = "0" ]; then
+            echo "::notice::De run van de PR heeft geen gebouwde preview bewaard. Er komt geen preview."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Is alles ingericht?
+        id: check
+        if: steps.pr.outputs.skip != 'true' && steps.artifact.outputs.skip != 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::notice::CLOUDFLARE_API_TOKEN ontbreekt in omgeving preview. Er komt geen preview voor deze PR."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "klaar=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.check.outputs.klaar == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - if: steps.check.outputs.klaar == 'true'
+        uses: pnpm/action-setup@v6
+
+      - if: steps.check.outputs.klaar == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Installeren (versie van main)
+        if: steps.check.outputs.klaar == 'true'
+        run: |
+          node scripts/guard-cloudflare.mjs
+          pnpm install --frozen-lockfile
+
+      # Pas na de installatie, en alleen naar dist/: niets uit de PR komt in node_modules,
+      # de config of de scripts terecht.
+      - name: Gebouwde PR ophalen
+        if: steps.check.outputs.klaar == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: preview-dist
+          path: ${{ runner.temp }}/preview
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      # De config komt uit main (deze checkout), niet uit de pull request: naam
+      # `<app>-preview` en de opslag van `env.preview`. De PR levert alleen de gebouwde code.
+      - name: Preview-config maken (uit main)
+        if: steps.check.outputs.klaar == 'true'
+        env:
+          MAP: ${{ runner.temp }}/preview
+        run: node scripts/preview-config.mjs "$MAP/worker/index.js" "$MAP/client" "$MAP/wrangler.json"
+
+      - name: Preview uploaden
+        id: upload
+        if: steps.check.outputs.klaar == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          ACCESS_TEAM: ${{ vars.ACCESS_TEAM }}
+          ACCESS_AUD: ${{ vars.ACCESS_AUD }}
+          WRANGLER_SEND_METRICS: "false"
+          PR: ${{ steps.pr.outputs.nummer }}
+          MAP: ${{ runner.temp }}/preview
+        # Zonder pipefail telt alleen de exitcode van tee, en blijft een mislukte upload groen.
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm exec wrangler versions upload -c "$MAP/wrangler.json" --preview-alias "pr-$PR" \
+            --var "ACCESS_TEAM:$ACCESS_TEAM" --var "ACCESS_AUD:$ACCESS_AUD" | tee upload.log
+          url=$(grep -oE 'https://pr-[0-9]+-[^ ]+\.workers\.dev' upload.log | head -n 1 || true)
+          if [ -z "$url" ]; then
+            echo "::warning::De upload is gelukt, maar er staat geen previewlink in de uitvoer van wrangler. Er komt geen reactie in de PR."
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Link in de PR zetten
+        if: steps.check.outputs.klaar == 'true' && steps.upload.outputs.url != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          URL: ${{ steps.upload.outputs.url }}
+          PR: ${{ steps.pr.outputs.nummer }}
+        run: |
+          # Eén reactie per PR, die bij elke push wordt bijgewerkt.
+          markering='<!-- cloudflare-preview -->'
+          tekst="$markering
+          Cloudflare-preview: $URL
+
+          Deze link staat achter dezelfde login als productie, toont de testbalk en gebruikt de
+          testdatabase. Nieuwe migraties uit deze PR staan daar pas na de merge; een wijziging
+          in wrangler.jsonc ook."
+          bestaand=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq ".[] | select(.body | startswith(\"$markering\")) | .id" | head -n 1)
+          if [ -n "$bestaand" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$bestaand" -f body="$tekst" > /dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$PR/comments" -f body="$tekst" > /dev/null
+          fi

@@ -1,0 +1,10 @@
+# Alleen voor je eigen computer. De preview en `STACK_ALLOW_DEV=1 pnpm dev` maken .dev.vars
+# zelf aan; je hoeft dit bestand meestal niet te kopiëren. .dev.vars staat nooit in git.
+#
+# lokaal: geen Cloudflare Access, de servercode neemt de vaste testgebruiker
+# lokaal@voorbeeld.nl. Deze stand mag nooit in wrangler.jsonc (guard:cloudflare weigert hem).
+OMGEVING=lokaal
+
+# Geheimen van andere systemen (Stripe, Resend, een AI-dienst) voor lokaal testen, met een
+# testsleutel. In productie zet de owner ze als geheim van de Worker, nooit in git.
+# RESEND_API_KEY=

@@ -1,0 +1,27 @@
+node_modules/
+dist/
+coverage/
+
+# Omgevingsvariabelen: nooit in git. .env.example wel, die staat er expres in.
+.env
+.env.*
+!.env.example
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# Editors / OS
+.DS_Store
+*.log
+
+# Compound Engineering: tijdelijke werkbestanden van skills
+.context/compound-engineering/
+
+# Lokaal: de geheimen en de stand van de servercode, en de lokale D1/R2 van wrangler.
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.wrangler/

@@ -1,0 +1,150 @@
+name: Uitrollen
+
+# Productie bij een merge naar main; een preview per pull request, achter dezelfde login als
+# productie. De preview gaat in twee delen: de job "Preview" hieronder bouwt de PR zonder
+# sleutels en bewaart het resultaat, en preview-uitrollen.yml (altijd de versie van main)
+# uploadt dat met de preview-sleutel naar de Worker `<app>-preview`, met de opslag uit
+# `env.preview` van main. Zo ziet code uit een PR nooit een sleutel en nooit de echte gegevens.
+#   production  CLOUDFLARE_API_TOKEN (uitrollen, D1-migraties), vars CLOUDFLARE_ACCOUNT_ID,
+#               ACCESS_TEAM, ACCESS_AUD (de Access-apps van productie), VITE_SENTRY_DSN
+#   preview     een eigen CLOUDFLARE_API_TOKEN, vars CLOUDFLARE_ACCOUNT_ID, ACCESS_TEAM,
+#               ACCESS_AUD (de Access-app van de preview-Worker); alleen preview-uitrollen.yml
+# De omgevingen production en preview zijn beperkt tot main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: uitrollen-${{ github.ref }}
+  # Een nieuwere preview mag een oudere afbreken; een productie-uitrol nooit.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  productie:
+    name: Productie
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Is alles ingericht?
+        id: check
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCESS_AUD: ${{ vars.ACCESS_AUD }}
+        run: |
+          node scripts/guard-cloudflare.mjs
+          ingericht=$(node -e "import('./scripts/lib/cloudflare-config.mjs').then((m) => console.log(m.isIngericht()))")
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::notice::CLOUDFLARE_API_TOKEN ontbreekt in omgeving production. Uitrollen wordt overgeslagen."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "$ingericht" != "true" ]; then
+            echo "::notice::De database-id's in wrangler.jsonc zijn nog de nullen uit de template. De app is nog niet ingericht; uitrollen wordt overgeslagen."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ -z "$ACCESS_AUD" ]; then
+            # Nooit live zonder de controle van Access in de servercode: dan zou alles achter
+            # /api dicht blijven, of erger, de deur staat er nog niet.
+            echo "::notice::ACCESS_AUD ontbreekt in omgeving production. De deur is nog niet ingericht; uitrollen wordt overgeslagen."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.check.outputs.skip != 'true'
+        uses: pnpm/action-setup@v6
+
+      - if: steps.check.outputs.skip != 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - if: steps.check.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Bouwen
+        if: steps.check.outputs.skip != 'true'
+        env:
+          VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
+        run: pnpm build
+
+      # Eerst de testdatabase (canary): faalt een migratie daar, dan blijft productie
+      # onaangeroerd. Daarna productie, en pas dan de nieuwe code.
+      - name: Migraties op de testdatabase
+        if: steps.check.outputs.skip != 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+          CI: "1"
+        run: pnpm exec wrangler d1 migrations apply DB --remote --env preview -c wrangler.jsonc
+
+      - name: Migraties op productie
+        if: steps.check.outputs.skip != 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: "false"
+          CI: "1"
+        run: pnpm exec wrangler d1 migrations apply DB --remote -c wrangler.jsonc
+
+      - name: Uitrollen naar Cloudflare
+        if: steps.check.outputs.skip != 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          ACCESS_TEAM: ${{ vars.ACCESS_TEAM }}
+          ACCESS_AUD: ${{ vars.ACCESS_AUD }}
+          WRANGLER_SEND_METRICS: "false"
+        run: pnpm exec wrangler deploy --var "ACCESS_TEAM:$ACCESS_TEAM" --var "ACCESS_AUD:$ACCESS_AUD"
+
+  preview:
+    name: Preview
+    # Alleen PR's uit deze repo: een fork krijgt geen preview. Deze job noemt geen omgeving en
+    # leest geen secrets; uploaden doet preview-uitrollen.yml.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Wrangler-config controleren
+        run: node scripts/guard-cloudflare.mjs
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Bouwen (testomgeving)
+        env:
+          VITE_OMGEVING: test
+        run: pnpm build
+
+      # De schermen (dist/client) en de servercode (dist/<app>/index.js). De config van de
+      # pull request gaat niet mee: preview-uitrollen.yml maakt die uit main.
+      - name: Gebouwde preview klaarzetten
+        run: |
+          mkdir -p "$RUNNER_TEMP/preview"
+          cp -r dist/client "$RUNNER_TEMP/preview/client"
+          worker=$(find dist -mindepth 2 -maxdepth 2 -name index.js -not -path 'dist/client/*' | head -1)
+          [ -n "$worker" ] || { echo "::error::de gebouwde servercode (dist/<app>/index.js) ontbreekt"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/preview/worker"
+          cp -r "$(dirname "$worker")"/. "$RUNNER_TEMP/preview/worker/"
+          rm -f "$RUNNER_TEMP/preview/worker/wrangler.json"
+
+      - name: Gebouwde preview bewaren
+        uses: actions/upload-artifact@v7
+        with:
+          name: preview-dist
+          path: ${{ runner.temp }}/preview
+          retention-days: 3
+          if-no-files-found: error

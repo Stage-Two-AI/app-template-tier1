@@ -1,0 +1,381 @@
+# Werkwijze
+
+*Hoort bij stack-light, het lichte spoor van de Stage Two-stack, versie 19. Dit bestand komt
+uit de gedeelde template en wordt bijgewerkt met `/stack-light:updaten`, als pull request;
+wijzig het niet per project.*
+
+Dit legt uit hóé er in dit project gewerkt wordt en vooral **waarom**. De korte,
+gebiedende versie voor dagelijks gebruik staat in `AGENTS.md`; dit is de achtergrond
+voor wie een keuze wil begrijpen of ter discussie wil stellen.
+
+De uitgangspunten waar alles uit volgt:
+
+- De bouwer is geen programmeur en kan code niet regel voor regel beoordelen. Elke
+  keuze moet fouten daarom **mechanisch** afvangen in plaats van te vertrouwen op het
+  oog van de bouwer.
+- Het werk moet **overdraagbaar** zijn aan een ingehuurde programmeur. Geen
+  zelfbedachte workflows, alleen bewezen industriepraktijk.
+- Je moet **zonder Stage Two verder kunnen**.
+- De afspraken hangen niet aan één AI-assistent. Met Claude Code, Codex of een andere
+  agent, of zonder agent, gelden dezelfde regels en dezelfde poort.
+
+---
+
+## 1. Waarom deze onderdelen
+
+Een stack-light-app is **één Cloudflare Worker**: de schermen als gebouwde bestanden, de
+servercode onder `/api`, een database en een bestandsopslag ernaast. Alles bij één partij,
+achter één deur.
+
+| Laag | Keuze | Waarom |
+|---|---|---|
+| Taal | TypeScript, `strict` | vangt het gros van de fouten vóór het live gaat |
+| Bouwgereedschap | Vite | snel, en bouwt schermen en servercode in één keer |
+| Interface | React + shadcn/ui + Tailwind | bouwblokken in je eigen repo, geen afhankelijkheid van iemands versiebeleid |
+| Servercode | Hono, in `worker/` | een kleine, gangbare laag voor de routes onder `/api`; draait in de Worker zelf |
+| Database | Cloudflare D1 (SQLite) | gewone SQL, migraties als bestanden in `migrations/`, vrijwel gratis per app |
+| Bestanden | Cloudflare R2 | foto's, uploads en exports, naast de database in dezelfde Worker |
+| Geplande taken | Cloudflare-cron | `triggers.crons` in `wrangler.jsonc`, de code in `scheduled` in `worker/index.ts` |
+| Validatie | Zod | controleert gegevens van buiten vóór gebruik, in het scherm én in de servercode |
+| Tests | Vitest + Playwright | het vangnet |
+| Fouten in productie | Sentry | anders hoor je het van je klant |
+| Hosting en toegang | Cloudflare | een preview per pull request achter de login, productie op `main`; Cloudflare Access is de deur |
+
+Waarom het meeste in de browser blijft: het typische project is een intern werktuig
+achter een login. De printer, de camera voor barcodes, een PDF uit wat op het scherm staat,
+Excel in- en uitlezen: dat kan alleen in de browser. De servercode doet wat de browser niet
+mag of kan: gegevens bewaren, sleutels van andere systemen gebruiken, iets op vaste tijden doen.
+
+**Wat stack-light niet is.** Er is ook een spoor met Cloudflare en Supabase
+(`stack-template-cloudflare`), voor apps die een volwaardige Postgres-database met
+beveiliging per rij nodig hebben. Een klant zit op het ene of het andere spoor. Overstappen
+van stack-light naar dat spoor is herbouwen, en dat doet Stage Two.
+
+---
+
+## 2. Beveiliging, en waarom dat hier zwaarder weegt
+
+**De deur: Cloudflare Access staat voor de hele app.** Wie niet op de lijst staat, ziet
+de schermen niet en bereikt de servercode niet. De lijst staat in `toegang.json` in de
+beheer-repo van de organisatie (`<org>/stagetwo-beheer`): welke mensen bij welke app mogen,
+en welke paden publiek zijn. Een bouwer mag daar zelf mensen toevoegen én een pad publiek
+maken, met een pull request die alleen `toegang.json` wijzigt. Publiceren hoort bij gewoon
+bouwen.
+
+**De servercode controleert het nog een keer.** Access stuurt bij elk doorgelaten verzoek
+een ondertekend bewijs mee. `wieIsHet` in `worker/lib/access.ts` controleert dat bewijs en
+leest het mailadres eruit. In `worker/index.ts` staat de inlog-middleware: elke route
+daaronder weigert een verzoek zonder geldige gebruiker. Alleen routes die **boven** die
+middleware staan, zijn zonder inlog bereikbaar. Is de app nog niet ingericht (geen
+`ACCESS_TEAM` of `ACCESS_AUD`), dan is er nooit een gebruiker en blijft alles dicht.
+
+Een pad publiek maken gaat dus altijd op twee plekken, en je hebt ze allebei nodig:
+
+| Plek | Wat | Vergeet je het |
+|---|---|---|
+| `toegang.json` in de beheer-repo | het pad onder `publiek` bij deze app: de deur laat het door zonder inlog | de deur houdt bezoekers tegen |
+| `worker/index.ts` | de route staat vóór de inlog-middleware | de servercode geeft 401 |
+
+**Wie wat mag zien, regelt de servercode.** Er is geen beveiliging per rij in de database:
+D1 kent dat niet. Mag een gebruiker alleen zijn eigen gegevens zien, dan filtert de route
+daarop, met het mailadres uit `c.var.gebruiker`. Zo'n regel test je net als ander gedrag:
+vraag als gebruiker A de gegevens van B op, verwacht niets.
+
+**Machines** (een server, een Pi, een script dat elke nacht iets ophaalt) loggen niet in als
+mens. Ze krijgen een eigen apparaatsleutel:
+
+| Wat | Hoe |
+|---|---|
+| Een apparaat toevoegen | `pnpm apparaat:nieuw <naam>`; de sleutel verschijnt één keer, zet hem op het apparaat |
+| Wat er in de repo komt | alleen de vingerafdruk, in `worker/apparaten.json`; die mag openbaar zijn |
+| Intrekken | `pnpm apparaat:nieuw -- --intrekken <naam>`, pull request, merge |
+| In de route | `welkApparaat(request, ["<naam>"])` uit `worker/lib/apparaat.ts`, met alleen de apparaten van die route |
+| Aan de deur | het pad staat publiek in `toegang.json`, en de route staat vóór de inlog-middleware |
+
+De apparaatsleutel doet dan het werk van de deur. Laat zo'n route precies doen wat het
+apparaat nodig heeft, en niet meer.
+
+**Alles in de schermen is leesbaar voor de gebruiker.** Elke `VITE_`-variabele zit in het
+bestand dat de bezoeker downloadt.
+
+- Wél in de schermen: de **Sentry DSN**. Die is expres publiek: hij kan alleen fouten insturen.
+- **Nooit** in de schermen: API-sleutels van andere systemen, wachtwoorden. Die horen in de
+  servercode, als geheim van de Worker.
+- **Sleutels van andere systemen** (Stripe, Resend, een AI-dienst) zet de owner van de
+  organisatie als geheim van de Worker, niet de bouwer: een nieuw extern systeem aansluiten
+  is een architectuurbesluit. De bouwer schrijft de code zo dat hij een duidelijke fout geeft
+  als de sleutel ontbreekt (zie `worker/env.ts`).
+- `.env`, `.dev.vars` en `.wrangler/` staan nooit in git.
+
+Twee checks bewaken dit automatisch: `guard:secrets` doorzoekt de repo én de gebouwde
+bundel. Die tweede is de belangrijkste van allemaal.
+
+**Eén adres, en dat staat achter Access.** De deur werkt alleen als er geen tweede adres
+is om omheen te gaan. `wrangler.jsonc` kent daarom twee standen, en
+`scripts/lib/cloudflare-config.mjs` weigert elke andere combinatie:
+
+| Stand | In `wrangler.jsonc` | Wanneer |
+|---|---|---|
+| standaard | een route met `custom_domain: true` en `workers_dev: false` | altijd, zodra de app een eigen domein heeft |
+| tijdelijk | geen `routes` en `workers_dev: true` | alleen zolang de klant nog geen domein heeft gekozen |
+
+In de tijdelijke stand draait de app op `<worker>.<subdomein>.workers.dev`, en zet de
+inrichting Access op dat adres. Het is een overbrugging, geen keuze voor de lange termijn:
+is het domein er, dan gaat de app naar de standaardstand en gaat workers.dev weer uit. Dat
+overstappen doet Stage Two, met de inrichting in de beheer-repo.
+
+**De vaste afspraken in `wrangler.jsonc`.** De check `guard:cloudflare` houdt een PR tegen
+die er niet aan voldoet:
+
+- `main` is `worker/index.ts`, en `/api/*` gaat altijd eerst naar de servercode
+  (`assets.run_worker_first`);
+- opslag alleen in D1 en R2 (plus `ai` en `triggers`); KV, Durable Objects, queues en
+  andere opslag niet. Eén soort database en één soort bestanden, in elke app hetzelfde;
+- een omgeving `env.preview` met een **eigen** D1 en R2, nooit die van productie;
+- nooit `OMGEVING=lokaal` in `wrangler.jsonc`: die stand zet de controle van Access uit en
+  hoort alleen in `.dev.vars` op je eigen computer.
+
+**Een geaccepteerd risico.** De sleutel waarmee GitHub uitrolt, mag D1 en R2 van het hele
+Cloudflare-account beheren, niet van één app. Met weinig apps in een account is dat
+aanvaardbaar. Wil een klant het dichter, dan verdeelt Stage Two de apps over accounts.
+
+---
+
+## 3. Databasewijzigingen lopen via GitHub
+
+### De database van deze app
+
+Elke stack-light-app heeft haar eigen D1-database en haar eigen R2-opslag. Een app die
+niets bewaart, laat de voorbeeldtabel weg en gebruikt de database niet; dat kost niets.
+De regel erachter is **één app per verzameling gegevens**: gaat het over gegevens die al in
+een andere app zitten, dan bouw je het in die app.
+
+Wat waar hoort:
+
+| Wat | Waar |
+|---|---|
+| gegevens met onderlinge verbanden, die je wilt zoeken, filteren of sorteren | D1, via een migratie |
+| bestanden: foto's, audio, uploads, exports | R2 (de binding `BESTANDEN`) |
+| iets dat op vaste tijden moet gebeuren | Cloudflare-cron: `triggers.crons` in `wrangler.jsonc` en `scheduled` in `worker/index.ts` |
+| inhoud die jij beheert en zelden verandert (teksten, een productenlijst) | gewoon in de repo |
+
+### De testomgeving: preview en lokaal kijken raken nooit productie
+
+Elke app heeft naast productie een **testomgeving**: een eigen D1 en R2, in
+`wrangler.jsonc` onder `env.preview`. Zelfde schema, andere gegevens, los van productie.
+
+Wat erop draait:
+
+- **De preview van elke pull request.** Die draait als aparte Worker `<app>-preview`, met de
+  testdatabase en de testbestanden. Klikken, opslaan, verwijderen in een preview raakt nooit
+  echte gegevens. De preview toont een balk dat dit de testomgeving is.
+- **Migraties, als eerste.** Bij een merge past de workflow Uitrollen de migraties eerst toe
+  op de testdatabase (de canary), dan op productie, en zet pas daarna de nieuwe code neer.
+  Faalt het op de testdatabase, dan blijft productie zoals hij was.
+
+Twee dingen om te weten over de preview, want ze verrassen mensen:
+
+- **De preview gebruikt altijd de instellingen van `main`.** De pull request levert alleen
+  de gebouwde code; welke database, welke bestanden en welke variabelen de preview krijgt,
+  komt uit `wrangler.jsonc` op `main`. Zo kan code uit een pull request nooit bij de opslag
+  van productie. Een wijziging aan `wrangler.jsonc` (een nieuwe binding, een cron) zie je dus
+  pas na de merge. Geplande taken draaien in de preview niet.
+- **Nieuwe migraties uit een pull request staan pas na de merge in de testdatabase.** Een
+  preview met code die een nieuwe kolom nodig heeft, faalt dus tot de migratie gemerged is.
+  Daarom: de migratie in de ene pull request, het gebruik ervan in de volgende.
+
+**Lokaal kijken op je eigen computer** gebruikt geen van beide: daar draait een lokale D1
+in de map `.wrangler/`, opgebouwd uit alle migraties (route `docs/routes/lokaal-kijken.md`).
+
+### Hoe een wijziging aan de database gaat
+
+Het doel: je kunt het databaseschema wijzigen **zonder toegang tot Cloudflare**. Dat werkt
+via migraties plus de uitrol.
+
+1. De wijziging wordt een SQL-bestand in `migrations/`, met een volgnummer voorop.
+2. Pull request openen. De CI draait: typecontrole, tests (met een nagebootste D1 die alle
+   migraties toepast), de end-to-end test op een lokale D1 vanaf nul, en de
+   destructie-check.
+3. Mergen naar `main`.
+4. De workflow Uitrollen past de migratie toe: eerst op de testdatabase, dan op productie.
+5. Daarna zet dezelfde workflow de nieuwe versie op Cloudflare neer.
+
+Regels die hierbij horen en niet vrijblijvend zijn:
+
+- **Migraties draaien alleen bij een merge naar `main`**, nooit op een pull request.
+- **Een migratie die al in `main` staat, pas je nooit meer aan.** D1 houdt bij welke
+  bestanden al zijn toegepast; een gewijzigd oud bestand draait niet opnieuw, en dan lopen
+  repo en database uit de pas. Een fout herstel je met een nieuw bestand.
+- **Migraties zijn aanvullend.** Voeg een kolom toe in de ene pull request en gebruik hem in
+  de volgende; gooi een kolom pas weg als niets hem meer aanroept.
+- **Nooit met de hand in de database bij Cloudflare.** Niet in het dashboard, niet met
+  `wrangler d1 execute --remote`. Dan loopt de repo uit de pas met de werkelijkheid.
+- **Iets weggooien vraagt een bevestiging.** D1 bewaart 30 dagen geschiedenis (Time
+  Travel), maar terugzetten is werk van de owner, en alles wat na dat moment is ingevoerd,
+  is dan weg.
+
+De stappen zelf staan in `docs/routes/databasewijziging.md`.
+
+---
+
+## 4. De kwaliteitspoort
+
+Draait op elke pull request; alles groen voordat er gemerged kan worden. Wat elke
+check bewaakt staat in de tabel in `README.md`.
+
+Twee dingen om te begrijpen over waaróm dit zo streng staat:
+
+**De tests zijn de reviewer.** Er is bewust geen verplichte goedkeuring van een mens
+op gewone wijzigingen, zodat je je eigen werk kunt mergen zodra het groen is. De
+keerzijde is dat wat de tests niet dekken, door niemand gedekt wordt. Daarom is
+"schrijf de test erbij" hier geen nette gewoonte maar de kern van de afspraak.
+
+**Een rode check zet je niet uit.** De verleiding is groot, zeker als je haast hebt en
+de check "iets onbelangrijks" lijkt te vinden. Maar de check is er juist voor het
+moment dat je haast hebt.
+
+### Welke tests er zijn
+
+| Test | Waar | Wat |
+|---|---|---|
+| schermen | `src/**/*.test.ts(x)` | in een nagebootste browser (jsdom) |
+| servercode | `worker/**/*.test.ts` | in Node, met een nagebootste D1 (`tests/helpers/d1.ts`) waarop alle migraties draaien. Zo'n bestand begint met `// @vitest-environment node` |
+| end-to-end | `e2e/` | de gebouwde app in een echte browser, met een lokale D1 |
+
+`pnpm test` draait de eerste twee, `pnpm test:e2e` de laatste.
+
+### Wat "de happy path" is
+
+De route door de app waarop niets misgaat: lijst openen → item toevoegen → het staat er,
+ook na verversen. Niet de randgevallen. Breekt die route, dan is de app waardeloos, dus
+dat is de test die het meest telt. Hij raakt in één keer de hele keten: build,
+servercode, database en de interface.
+
+Uitbreiden doe je **reactief**: elke keer dat er in productie iets stukgaat, komt er
+een test bij die precies dat geval afdekt. Zo groeit het vangnet mee met je echte
+fouten in plaats van met bedachte scenario's.
+
+---
+
+## 5. Git- en werkafspraken
+
+1. **`main` is heilig.** Alles via een pull request, ook voor de bouwer.
+2. **Eén PR = één onderwerp.** Grote PR's zijn niet te beoordelen en een agent
+   verdwaalt erin.
+3. **Lees altijd de diff voordat je merget.** Zonder de taal te kennen let je op:
+   - zijn dit de bestanden die ik verwachtte?
+   - hoeveel regels? ("kleine fix" met 300 regels is een rode vlag)
+   - is er iets **verwijderd** waar niemand om gevraagd heeft?
+   - staan er nieuwe pakketten in `package.json`?
+   - raakt het aan inloggen, publieke routes, betalingen, `wrangler.jsonc` of migraties?
+   - staat er een sleutel of wachtwoord hardgecodeerd in?
+4. **Klik de Cloudflare-preview aan.** Kijken gaat boven hopen. Een preview-URL van de PR
+   is de enige geldige manier om werk te laten zien, nooit een dev-server op localhost.
+5. **Deployen = mergen.** Nooit met de hand op Cloudflare of in een console ingrijpen.
+6. **Conventional Commits** (`feat:`, `fix:`, `chore:`).
+7. **Bug gefixt? Schrijf er een test bij.** Zo groeit het vangnet mee.
+8. **Scope per taak, niet per uur.** Een agent die twee uur ongestoord doorbouwt,
+   levert een diff op die niet meer te beoordelen is. Dan is het vertrouwen in plaats
+   van controle.
+
+---
+
+## 6. Wie mag wat
+
+|  | Stage Two (bouwer) | Klant (mede-bouwer) |
+|---|---|---|
+| GitHub-repo | Admin | **Write** |
+| Direct pushen naar `main` | nee, geblokkeerd | **nee** |
+| Branch aanmaken en PR openen | ja | **ja** |
+| Eigen PR mergen | ja | **ja**, zodra alle checks groen zijn |
+| Mensen toegang geven, een pad publiek maken | ja | **ja**, met een PR op `toegang.json` in de beheer-repo |
+| Een sleutel van een ander systeem zetten | de owner | de owner |
+| Cloudflare-console | ja | niet nodig: deployen is mergen, inrichten doet de beheer-repo |
+| Sentry | ja | ja, meelezen |
+
+**De bouwer heeft geen Cloudflare-sleutel.** De Worker, de deur, de database en de opslag
+maakt de workflow App inrichten in de beheer-repo; die zet daarna de id's in
+`wrangler.jsonc` met een pull request. Zolang daar nullen staan, is de app nog niet
+ingericht en slaat de uitrol over. Uitrollen doet GitHub Actions bij een merge.
+
+**De merge-knop is de enige knop die je nodig hebt.** Je kunt met je eigen
+AI-assistent bouwen, een pull request openen en die zelf mergen, maar alleen langs de
+route waar de tests over gaan.
+
+**Er is geen enkele wijziging waarvoor je op goedkeuring van Stage Two moet wachten.**
+Dat is een bewuste keuze en geen vergeetachtigheid: als je voor elke wijziging op ons
+zou moeten wachten, kun je niet zonder ons verder, en dat is precies wat deze werkwijze
+belooft. Een verplichte review is niet overdraagbaar.
+
+Wat er dan wel voor zorgt dat het goed gaat: de checks blokkeren de merge als er iets
+stuk is, een destructieve migratie vraagt een expliciete bevestiging in de PR-tekst, een
+wijziging aan de poort zelf ook, en Stage Two krijgt een melding bij een wijziging aan de
+database, aan het inloggen of aan de poort zelf (zie `.github/CODEOWNERS`, dat blokkeert
+niets maar informeert wel).
+
+Alle accounts (GitHub, Cloudflare, Sentry) staan op naam van de klant, met Stage Two als
+lid met adminrechten. Bij oplevering hoeft er dus niets overgedragen te worden: de toegang
+van Stage Two wordt verwijderd en de rest blijft staan.
+
+---
+
+## 7. Hoe de afspraken worden afgedwongen
+
+Een afspraak die een agent moet ónthouden, breekt uiteindelijk. Een afspraak die de
+tooling afdwingt, niet. Vandaar drie lagen, oplopend in sterkte:
+
+1. **`AGENTS.md`** geeft richting. Dat is het bestand dat vrijwel elke AI-assistent
+   automatisch leest aan het begin van een sessie in deze map (Claude Code via
+   `CLAUDE.md`, dat niets anders doet dan `AGENTS.md` importeren). Bovenaan staat de
+   "klaar is"-definitie, want daar stuurt een model het sterkst op. De vaste routes
+   staan uitgeschreven in `docs/routes/`, als gewone tekst, zodat ook een assistent
+   zonder skills, of een mens, ze kan volgen.
+2. **De repo zelf** dwingt af, voor iedereen. `pnpm dev` weigert, tenzij je er
+   expliciet `STACK_ALLOW_DEV=1` voor zet om voor jezelf te kijken (de route
+   `docs/routes/lokaal-kijken.md`); in de Claude-app loopt dat via de preview
+   (`.claude/launch.json`). Zo is lokaal kijken een bewuste keuze en nooit stilletjes
+   de oplevering. Een PR die aan de poort of de afspraken komt, laat de
+   check `guard:template` rood staan. Voor Claude Code komt daar de Stage Two-plugin bij
+   (`Stage-Two-AI/stack-plugin-light`; Claude Code biedt de installatie zelf aan): een hook
+   die een tool-aanroep onderschept vóór hij wordt uitgevoerd en hem blokkeert met uitleg
+   terug aan de agent, `/stack-light:verder-werken` als aansluiting op de routes, en
+   `/stack-light:updaten` om een nieuwere template op te halen. Dat is dezelfde afspraak,
+   alleen eerder merkbaar: bij de toetsaanslag in plaats van bij de check. Een aansluiting
+   voor een agent mag nooit een afspraak bevatten die niet in `AGENTS.md` staat; zo
+   betekent "klaar" voor elke agent hetzelfde. Zonder de plugin blijft de check de grens:
+   minder snel, even hard.
+3. **CI en branch protection** is de bodem. Ook als een agent élke afspraak negeert,
+   komt er niets in `main` zonder groene checks.
+
+De eerste twee lagen bepalen hoe vaak je tegen die bodem aan loopt. De derde bepaalt
+wat er gebeurt als het toch misgaat.
+
+---
+
+## 8. Woordenlijst
+
+De namen zitten op verschillende verdiepingen; het zijn geen concurrenten van elkaar.
+
+| Term | Wat het is |
+|---|---|
+| **TypeScript** | de taal: JavaScript met labels erbij ("dit veld is een datum") zodat fouten opvallen vóór het live gaat |
+| **React** | het systeem van herbruikbare bouwblokken waarmee je de interface samenstelt. Geen taal |
+| **Vite** | het bouwgereedschap: maakt van je bronbestanden iets dat een browser en de Worker kunnen laden |
+| **Cloudflare** | het platform waar de app draait, en de deur ervoor: wie niet mag inloggen ziet de app niet |
+| **Worker** | het programma bij Cloudflare dat deze app is: het serveert de schermen en draait de servercode onder `/api` |
+| **Hono** | de kleine bibliotheek waarmee de routes van de servercode in `worker/` geschreven zijn |
+| **Cloudflare Access** | de deur: laat alleen de mensen uit `toegang.json` door, en stuurt een bewijs mee wie het is |
+| **D1** | de database van Cloudflare. Gewone SQL (SQLite), per app een eigen database |
+| **R2** | de bestandsopslag van Cloudflare, voor foto's, uploads en exports |
+| **Cron** | een geplande taak: code die op vaste tijden draait, zonder dat iemand iets aanklikt |
+| **Migratie** | een genummerd SQL-bestand dat één databasewijziging vastlegt, zodat de historie navolgbaar is |
+| **Binding** | de koppeling in `wrangler.jsonc` die de servercode toegang geeft tot de database (`DB`) of de bestanden (`BESTANDEN`) |
+| **Apparaatsleutel** | een eigen sleutel voor een machine die de servercode aanroept zonder als mens in te loggen |
+| **Beheer-repo** | de repo `<org>/stagetwo-beheer` van de organisatie: richt apps in en houdt `toegang.json` bij |
+| **PR (pull request)** | het voorstel om wijzigingen naar `main` te brengen. De plek waar diff, checks en preview samenkomen |
+| **Diff** | het verschil tussen oud en nieuw: precies wat er gewijzigd is |
+| **CI** | de machine die bij elke PR je checks draait en nee kan zeggen |
+| **Ruleset / branch protection** | de GitHub-instelling die bepaalt wie wat mag met `main` |
+| **AGENTS.md** | het bestand met de afspraken dat AI-assistenten automatisch lezen. Een afspraak tussen tools, niet van één leverancier |
+| **Hook** | een regel die een tool-aanroep van de agent onderschept en kan blokkeren. Afdwingen in plaats van vragen. In deze stack alleen voor Claude Code; de afspraak zelf staat in `AGENTS.md` en de check |
+| **Happy path** | de route door de app waarop niets misgaat: de normale, geslaagde gang van zaken |

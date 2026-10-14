@@ -148,7 +148,24 @@ describe("cloudflareConfig: één Worker met servercode, D1 en R2", () => {
       ...GOED,
       routes: [...GOED.routes, { pattern: "b.klant.nl", custom_domain: true }],
     };
-    expect(controleer(tweeDomeinen).uitvoer).toContain("precies één route");
+    expect(controleer(tweeDomeinen).uitvoer).toContain("eventueel met www.<domein> als tweede");
+    const metWww = {
+      ...GOED,
+      routes: [...GOED.routes, { pattern: "www.app.klant.nl", custom_domain: true }],
+    };
+    const r = controleer(metWww);
+    expect(r.code, r.uitvoer).toBe(0);
+    expect(JSON.parse(r.uitvoer)).toEqual({
+      worker: "app",
+      stand: "standaard",
+      hostname: "app.klant.nl",
+      alias: "www.app.klant.nl",
+    });
+    const wwwVoorop = {
+      ...GOED,
+      routes: [{ pattern: "www.app.klant.nl", custom_domain: true }, ...GOED.routes],
+    };
+    expect(controleer(wwwVoorop).code).toBe(1);
   });
 
   it("laat cron, Workers AI en observability toe", () => {

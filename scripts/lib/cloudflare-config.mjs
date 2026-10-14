@@ -215,19 +215,29 @@ export function cloudflareConfig(pad = "wrangler.jsonc") {
       `\`workers_dev\` ontbreekt; zonder die regel zet wrangler het workers.dev-adres aan. ${STANDEN}`,
     );
   }
-  if (routes.length > 1) {
-    fout(
-      `er staan ${routes.length} routes in, maar de standaardstand heeft precies één route: het eigen domein. ` +
-        `Access beschermt alleen dat domein, dus elke extra route (een tweede domein of een zone-route) staat open. ${STANDEN}`,
-    );
-  }
   const domein = routes[0];
   if (domein?.custom_domain !== true || typeof domein.pattern !== "string" || !domein.pattern) {
     fout(
       `er staat geen route met \`custom_domain: true\` in, dus de app heeft geen adres. ${STANDEN}`,
     );
   }
-  return { worker: config.name, stand: "standaard", hostname: domein.pattern };
+  // Eén uitzondering: www.<domein> naast het domein zelf. De beheer-repo zet de deur op
+  // allebei; de app stuurt www zelf door naar het domein.
+  const www = `www.${domein.pattern}`;
+  const tweede = routes[1];
+  const isWww = routes.length === 2 && tweede?.custom_domain === true && tweede.pattern === www;
+  if (routes.length > 1 && !isWww) {
+    fout(
+      `er staan ${routes.length} routes in, maar de standaardstand heeft één route: het eigen domein (eventueel met www.<domein> als tweede). ` +
+        `Access beschermt alleen die adressen, dus elke andere route (een tweede domein of een zone-route) staat open. ${STANDEN}`,
+    );
+  }
+  return {
+    worker: config.name,
+    stand: "standaard",
+    hostname: domein.pattern,
+    ...(isWww ? { alias: www } : {}),
+  };
 }
 
 /** Leest wrangler.jsonc zonder te controleren (de controle is `cloudflareConfig`). */

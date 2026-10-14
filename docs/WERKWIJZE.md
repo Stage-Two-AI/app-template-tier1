@@ -116,7 +116,7 @@ is om omheen te gaan. `wrangler.jsonc` kent daarom twee standen, en
 
 | Stand | In `wrangler.jsonc` | Wanneer |
 |---|---|---|
-| standaard | een route met `custom_domain: true` en `workers_dev: false` | altijd, zodra de app een eigen domein heeft |
+| standaard | een route met `custom_domain: true` en `workers_dev: false`, eventueel met `www.<domein>` als tweede route | altijd, zodra de app een eigen domein heeft; de app stuurt www zelf door naar het domein |
 | tijdelijk | geen `routes` en `workers_dev: true` | alleen zolang de klant nog geen domein heeft gekozen |
 
 In de tijdelijke stand draait de app op `<worker>.<subdomein>.workers.dev`, en zet de

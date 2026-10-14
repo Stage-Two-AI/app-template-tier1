@@ -111,7 +111,8 @@ docs/routes/           de vaste routes, stap voor stap (zie Werkwijzen)
   `wrangler.jsonc`). Wijs die nooit naar die van productie; `guard:cloudflare` houdt dat
   tegen, en de uitrol van een preview gebruikt altijd de config van main.
 - **De app heeft één adres, en dat staat achter Access.** Normaal is dat het eigen domein
-  (`routes` met `custom_domain: true`, `workers_dev: false`). Alleen zolang er nog geen
+  (`routes` met `custom_domain: true`, `workers_dev: false`), eventueel met `www.<domein>` als
+  tweede route; de app stuurt www dan zelf door. Alleen zolang er nog geen
   domein is, mag de tijdelijke stand: geen `routes` en `workers_dev: true`. Zet die stand
   niet op eigen houtje aan of uit; `docs/WERKWIJZE.md` zegt wanneer hij mag.
 - **Wie code wijzigt, wijzigt ook een test.** Bugfix? Eerst een test die de bug

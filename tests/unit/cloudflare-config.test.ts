@@ -10,7 +10,27 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
  * dat; deze test draait die controle zoals CI dat doet: als los Node-proces in een map.
  */
 const LIB = resolve(__dirname, "../../scripts/lib/cloudflare-config.mjs");
-const TEMPLATE = readFileSync(resolve(__dirname, "../../wrangler.jsonc"), "utf8");
+/** De wrangler.jsonc van déze app: die verschilt per app (naam, stand, id's), dus alleen de regels. */
+const VAN_DE_APP = readFileSync(resolve(__dirname, "../../wrangler.jsonc"), "utf8");
+
+/** Een kale app zoals de template hem levert: tijdelijke stand, nul-id's, met commentaar. */
+const NIEUW = `// uitleg
+{
+  "name": "app",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": { "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
+  "workers_dev": true,
+  "preview_urls": true,
+  "d1_databases": [{ "binding": "DB", "database_name": "app", "database_id": "00000000-0000-0000-0000-000000000000" }],
+  "r2_buckets": [{ "binding": "BESTANDEN", "bucket_name": "app" }],
+  "env": {
+    "preview": {
+      "d1_databases": [{ "binding": "DB", "database_name": "app-test", "database_id": "00000000-0000-0000-0000-000000000001" }],
+      "r2_buckets": [{ "binding": "BESTANDEN", "bucket_name": "app-test" }],
+    },
+  },
+}`;
 
 let map: string;
 beforeEach(() => {
@@ -51,8 +71,13 @@ function controleer(config: object | string): { code: number | null; uitvoer: st
 }
 
 describe("cloudflareConfig: één Worker met servercode, D1 en R2", () => {
-  it("laat de wrangler.jsonc van de template door (tijdelijke stand, met commentaar)", () => {
-    const r = controleer(TEMPLATE);
+  it("laat de wrangler.jsonc van deze app door (welke stand ook)", () => {
+    const r = controleer(VAN_DE_APP);
+    expect(r.code, r.uitvoer).toBe(0);
+  });
+
+  it("laat een kale app door (tijdelijke stand, met commentaar en komma's aan het eind)", () => {
+    const r = controleer(NIEUW);
     expect(r.code, r.uitvoer).toBe(0);
     expect(JSON.parse(r.uitvoer)).toMatchObject({ stand: "tijdelijk" });
   });
@@ -151,7 +176,7 @@ describe("isIngericht en previewConfig", () => {
   };
 
   it("is pas ingericht als de database-id's geen nullen meer zijn", () => {
-    writeFileSync(join(map, "wrangler.jsonc"), TEMPLATE);
+    writeFileSync(join(map, "wrangler.jsonc"), NIEUW);
     expect(lib("console.log(m.isIngericht())")).toBe("false");
     writeFileSync(join(map, "wrangler.jsonc"), JSON.stringify(GOED));
     expect(lib("console.log(m.isIngericht())")).toBe("true");

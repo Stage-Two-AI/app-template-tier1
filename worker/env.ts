@@ -20,4 +20,9 @@ export interface Env {
   ACCESS_TEAM?: string;
   /** De Audience-tags van de Access-apps voor deze app, met komma's. Zet de uitrol. */
   ACCESS_AUD?: string;
+  /**
+   * Waar fouten uit de servercode naartoe gaan (Sentry), dezelfde DSN als de schermen. Zet
+   * de uitrol uit de GitHub-variabele `VITE_SENTRY_DSN`. Leeg of afwezig: Sentry staat uit.
+   */
+  SENTRY_DSN?: string;
 }

@@ -7,8 +7,10 @@ name: Uitrollen
 # `env.preview` van main. Zo ziet code uit een PR nooit een sleutel en nooit de echte gegevens.
 #   production  CLOUDFLARE_API_TOKEN (uitrollen, D1-migraties), vars CLOUDFLARE_ACCOUNT_ID,
 #               ACCESS_TEAM, ACCESS_AUD (de Access-apps van productie), VITE_SENTRY_DSN
+#               (schermen en servercode; leeg = geen Sentry)
 #   preview     een eigen CLOUDFLARE_API_TOKEN, vars CLOUDFLARE_ACCOUNT_ID, ACCESS_TEAM,
-#               ACCESS_AUD (de Access-app van de preview-Worker); alleen preview-uitrollen.yml
+#               ACCESS_AUD (de Access-app van de preview-Worker), VITE_SENTRY_DSN (alleen de
+#               servercode van de preview; leeg = geen Sentry); alleen preview-uitrollen.yml
 # De omgevingen production en preview zijn beperkt tot main.
 on:
   push:
@@ -98,8 +100,14 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           ACCESS_TEAM: ${{ vars.ACCESS_TEAM }}
           ACCESS_AUD: ${{ vars.ACCESS_AUD }}
+          SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
           WRANGLER_SEND_METRICS: "false"
-        run: pnpm exec wrangler deploy --var "ACCESS_TEAM:$ACCESS_TEAM" --var "ACCESS_AUD:$ACCESS_AUD"
+        # Dezelfde DSN als de schermen; zonder DSN krijgt de Worker er geen en staat Sentry uit.
+        shell: bash
+        run: |
+          sentry=()
+          if [ -n "$SENTRY_DSN" ]; then sentry=(--var "SENTRY_DSN:$SENTRY_DSN"); fi
+          pnpm exec wrangler deploy --var "ACCESS_TEAM:$ACCESS_TEAM" --var "ACCESS_AUD:$ACCESS_AUD" "${sentry[@]}"
 
   preview:
     name: Preview

@@ -29,6 +29,7 @@
     "db:lokaal": "wrangler d1 migrations apply DB --local"
   },
   "dependencies": {
+    "@sentry/cloudflare": "^11.3.0",
     "@sentry/react": "^11.3.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

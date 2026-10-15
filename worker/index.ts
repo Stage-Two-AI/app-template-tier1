@@ -7,10 +7,14 @@
  * de routes onder "Publiek" hieronder. Een pad publiek maken gaat dus op twee plekken: hier
  * (de route vóór `vereisInlog`) en in toegang.json van de beheer-repo (zodat de deur het
  * doorlaat).
+ *
+ * Fouten gaan naar Sentry als de Worker een DSN heeft (zie `worker/lib/fouten.ts`).
  */
+import * as Sentry from "@sentry/cloudflare";
 import { Hono } from "hono";
 import type { Env } from "./env";
 import { type Gebruiker, wieIsHet } from "./lib/access";
+import { sentryOpties } from "./lib/fouten";
 import { items } from "./routes/items";
 
 export type Variabelen = { Bindings: Env; Variables: { gebruiker: Gebruiker } };
@@ -34,12 +38,14 @@ app.route("/items", items);
 app.notFound((c) => c.json({ fout: "Onbekend adres" }, 404));
 app.onError((fout, c) => {
   console.error(fout);
+  // Hono vangt de fout hier zelf op, dus Sentry ziet hem alleen als we hem melden.
+  Sentry.captureException(fout);
   return c.json({ fout: "Er ging iets mis" }, 500);
 });
 
-export default {
+export default Sentry.withSentry(sentryOpties, {
   fetch: app.fetch,
   // Geplande taken (triggers.crons in wrangler.jsonc). Alleen `fetch` en `scheduled` horen in
   // deze export: met iets anders erbij vuurt de cron niet.
   async scheduled(_controller: ScheduledController, _env: Env, _ctx: ExecutionContext) {},
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<Env>);

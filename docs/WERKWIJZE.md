@@ -38,7 +38,7 @@ achter één deur.
 | Geplande taken | Cloudflare-cron | `triggers.crons` in `wrangler.jsonc`, de code in `scheduled` in `worker/index.ts` |
 | Validatie | Zod | controleert gegevens van buiten vóór gebruik, in het scherm én in de servercode |
 | Tests | Vitest + Playwright | het vangnet |
-| Fouten in productie | Sentry | anders hoor je het van je klant |
+| Fouten in productie | Sentry, in de schermen en in de servercode | anders hoor je het van je klant |
 | Hosting en toegang | Cloudflare | een preview per pull request achter de login, productie op `main`; Cloudflare Access is de deur |
 
 Waarom het meeste in de browser blijft: het typische project is een intern werktuig
@@ -109,6 +109,17 @@ bestand dat de bezoeker downloadt.
 
 Twee checks bewaken dit automatisch: `guard:secrets` doorzoekt de repo én de gebouwde
 bundel. Die tweede is de belangrijkste van allemaal.
+
+**Fouten naar Sentry.** Eén Sentry-project per app, met één DSN voor de schermen
+(`src/lib/fouten.ts`) en de servercode (`worker/lib/fouten.ts`). De DSN is de
+GitHub-variabele `VITE_SENTRY_DSN` van de app-repo, in de omgevingen `production` en
+`preview`; die zet de owner. De uitrol bouwt hem in de schermen en geeft hem de Worker mee
+als `SENTRY_DSN`. In de preview krijgt alleen de servercode hem: de schermen van een pull
+request worden gebouwd zonder omgeving. Productie en preview staan in Sentry los van elkaar
+(omgeving `productie` en `test`). Is de variabele leeg, dan staat Sentry uit; op je eigen
+computer staat hij altijd uit. Er gaan geen persoonsgegevens mee: geen gebruiker of
+IP-adres, geen cookies, headers, bodies of queryparameters. Een fout in een route geeft de
+gebruiker hetzelfde antwoord als zonder Sentry ("Er ging iets mis"); Sentry krijgt hem erbij.
 
 **Eén adres, en dat staat achter Access.** De deur werkt alleen als er geen tweede adres
 is om omheen te gaan. `wrangler.jsonc` kent daarom twee standen, en

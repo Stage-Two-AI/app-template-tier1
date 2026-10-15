@@ -94,6 +94,16 @@ describe("uitrollen.yml: productie", () => {
     expect(deploy?.run).toContain('--var "ACCESS_AUD:$ACCESS_AUD"');
     expect(deploy?.env?.ACCESS_TEAM).toBe(gh("vars.ACCESS_TEAM"));
   });
+
+  it("geeft de servercode de DSN van Sentry mee, alleen als die er is", () => {
+    const deploy = prod.steps.find((s) => (s.run ?? "").includes("wrangler deploy"));
+    expect(deploy?.env?.SENTRY_DSN).toBe(gh("vars.VITE_SENTRY_DSN"));
+    expect(deploy?.run).toContain(
+      'if [ -n "$SENTRY_DSN" ]; then sentry=(--var "SENTRY_DSN:$SENTRY_DSN")',
+    );
+    expect(deploy?.run).toMatch(/"\$\{sentry\[@\]\}"/);
+    expect(deploy?.shell).toBe("bash");
+  });
 });
 
 describe("uitrollen.yml: de PR-job bouwt alleen, zonder sleutels", () => {
@@ -135,6 +145,15 @@ describe("preview-uitrollen.yml: de upload vanaf main", () => {
     expect(run).toContain('--preview-alias "pr-$PR"');
     expect(run).toContain("set -o pipefail");
     expect(run).not.toContain("wrangler deploy");
+  });
+
+  it("geeft de servercode van de preview de DSN van Sentry mee, alleen als die er is", () => {
+    const upload = up.steps.find((s) => (s.run ?? "").includes("wrangler versions upload"));
+    expect(upload?.env?.SENTRY_DSN).toBe(gh("vars.VITE_SENTRY_DSN"));
+    expect(upload?.run).toContain(
+      'if [ -n "$SENTRY_DSN" ]; then sentry=(--var "SENTRY_DSN:$SENTRY_DSN")',
+    );
+    expect(upload?.run).toMatch(/"\$\{sentry\[@\]\}"/);
   });
 
   it("zet nergens een GitHub-expressie in een run-regel", () => {

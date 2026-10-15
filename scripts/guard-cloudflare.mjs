@@ -2,7 +2,7 @@ import { fail, pass } from "./lib/changed-files.mjs";
 import { cloudflareConfig } from "./lib/cloudflare-config.mjs";
 
 /**
- * Houdt `wrangler.jsonc` binnen de afspraken van stack-light: één Worker met de servercode
+ * Houdt `wrangler.jsonc` binnen de afspraken van tier 1: één Worker met de servercode
  * in worker/, één adres achter Access, opslag alleen in D1 en R2, en een eigen D1 en R2 voor
  * de previews.
  *

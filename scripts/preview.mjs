@@ -33,7 +33,7 @@ if (!existsSync(join("node_modules", "vite", "bin", "vite.js"))) {
   if (uit.status !== 0)
     stop([
       ROOD("✗ `pnpm install` mislukte."),
-      "Draai /stack-light:installatie, of vraag Stage Two.",
+      "Draai /stagetwo-tier1:installatie, of vraag Stage Two.",
     ]);
 }
 

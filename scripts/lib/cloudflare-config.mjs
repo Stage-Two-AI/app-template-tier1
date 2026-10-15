@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 /**
- * `wrangler.jsonc` beschrijft hoe deze app op Cloudflare draait (stack-light). Het bestand
+ * `wrangler.jsonc` beschrijft hoe deze app op Cloudflare draait (tier 1). Het bestand
  * is van het project, want naam, adres en database verschillen per app, maar een paar regels
  * gelden voor elke app in deze stack:
  *

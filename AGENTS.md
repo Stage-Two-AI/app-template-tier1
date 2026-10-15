@@ -1,7 +1,7 @@
 # <projectnaam>
 
 <!-- Vervang <projectnaam> en de regel hieronder bij het opzetten van een project.
-     Alles boven de markering hoort bij dít project en wordt bij /stack-light:updaten
+     Alles boven de markering hoort bij dít project en wordt bij /stagetwo-tier1:updaten
      nooit overschreven. -->
 
 <!-- Wat deze app doet, in één zin, vanuit de gebruiker geschreven. -->
@@ -10,8 +10,8 @@
      apparaten roepen de servercode aan? Noem ze hier, zodat niemand ze vergeet. -->
 
 <!-- stack:begin -->
-<!-- Alles hieronder komt uit stack-template-light en wordt bijgewerkt met
-     /stack-light:updaten, als pull request. Wijzig het niet hier; meld het bij Stage Two. -->
+<!-- Alles hieronder komt uit de app-template en wordt bijgewerkt met
+     /stagetwo-tier1:updaten, als pull request. Wijzig het niet hier; meld het bij Stage Two. -->
 
 Dit bestand geldt voor **elke** agent die in deze repo werkt: Claude Code, Codex, Cursor,
 Copilot of een mens zonder agent. Er is geen tweede set afspraken ergens anders.
@@ -25,7 +25,7 @@ reactie bij). Niet eerder. Staat er een check rood, meld dan wat er nog mist in 
 
 ## Stack
 
-stack-light: één Cloudflare Worker per app.
+Tier 1: één Cloudflare Worker per app.
 
 | Deel | Wat | Waar |
 |---|---|---|
@@ -138,11 +138,11 @@ je begint en loop de stappen in volgorde af, in plaats van te improviseren:
   wie het met de hand doet.
 
 Een compleet nieuwe applicatie begin je niet vanuit deze map: die krijgt een eigen repo, via
-`/stack-light:nieuwe-app` in een lege map.
+`/stagetwo-tier1:nieuwe-app` in een lege map.
 
-In Claude Code geeft de Stage Two-plugin vier commando's: `/stack-light:installatie` (een
-nieuwe computer klaarzetten), `/stack-light:nieuwe-app`, `/stack-light:verder-werken`
-(verwijst naar de routes hierboven, er is maar één tekst) en `/stack-light:updaten`
+In Claude Code geeft de Stage Two-plugin vier commando's: `/stagetwo-tier1:installatie` (een
+nieuwe computer klaarzetten), `/stagetwo-tier1:nieuwe-app`, `/stagetwo-tier1:verder-werken`
+(verwijst naar de routes hierboven, er is maar één tekst) en `/stagetwo-tier1:updaten`
 (plugin, computer en apps bijwerken, elke wijziging aan een app als pull request).
 
 ## Wat je niet aanpast
@@ -150,7 +150,7 @@ nieuwe computer klaarzetten), `/stack-light:nieuwe-app`, `/stack-light:verder-we
 `.github/workflows/`, `.claude/`, `scripts/`, `worker/lib/access.ts`, `worker/lib/apparaat.ts`,
 `worker/lib/db.ts`, `worker/lib/fouten.ts`, `tests/helpers/`, de tests van de template in
 `tests/unit/`, `docs/WERKWIJZE.md`, `docs/routes/` en dit bestand onder de markering komen uit
-de gedeelde template en worden bijgewerkt met `/stack-light:updaten`, als pull request. De check
+de gedeelde template en worden bijgewerkt met `/stagetwo-tier1:updaten`, als pull request. De check
 `guard:template` laat een PR die eraan komt rood staan; in Claude Code houdt de hook van de
 Stage Two-plugin de wijziging al bij de toetsaanslag tegen. Klopt er iets niet, meld het dan
 bij Stage Two: dan krijgt elk project de verbetering, in plaats van dit project alleen.

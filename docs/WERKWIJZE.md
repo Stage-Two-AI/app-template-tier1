@@ -1,7 +1,7 @@
 # Werkwijze
 
-*Hoort bij stack-light, het lichte spoor van de Stage Two-stack, versie 19. Dit bestand komt
-uit de gedeelde template en wordt bijgewerkt met `/stack-light:updaten`, als pull request;
+*Hoort bij tier 1 van de Stage Two-stack, versie 19. Dit bestand komt
+uit de gedeelde template en wordt bijgewerkt met `/stagetwo-tier1:updaten`, als pull request;
 wijzig het niet per project.*
 
 Dit legt uit hóé er in dit project gewerkt wordt en vooral **waarom**. De korte,
@@ -23,7 +23,7 @@ De uitgangspunten waar alles uit volgt:
 
 ## 1. Waarom deze onderdelen
 
-Een stack-light-app is **één Cloudflare Worker**: de schermen als gebouwde bestanden, de
+Een tier 1-app is **één Cloudflare Worker**: de schermen als gebouwde bestanden, de
 servercode onder `/api`, een database en een bestandsopslag ernaast. Alles bij één partij,
 achter één deur.
 
@@ -46,10 +46,10 @@ achter een login. De printer, de camera voor barcodes, een PDF uit wat op het sc
 Excel in- en uitlezen: dat kan alleen in de browser. De servercode doet wat de browser niet
 mag of kan: gegevens bewaren, sleutels van andere systemen gebruiken, iets op vaste tijden doen.
 
-**Wat stack-light niet is.** Er is ook een spoor met Cloudflare en Supabase
-(`stack-template-cloudflare`), voor apps die een volwaardige Postgres-database met
-beveiliging per rij nodig hebben. Een klant zit op het ene of het andere spoor. Overstappen
-van stack-light naar dat spoor is herbouwen, en dat doet Stage Two.
+**Wat tier 1 niet is.** Er is ook tier 2, met Cloudflare en Supabase
+(`app-template-tier2`), voor apps die een volwaardige Postgres-database met
+beveiliging per rij nodig hebben. Een app zit op tier 1 of op tier 2. Overstappen
+van tier 1 naar tier 2 is herbouwen, en dat doet Stage Two.
 
 ---
 
@@ -57,7 +57,7 @@ van stack-light naar dat spoor is herbouwen, en dat doet Stage Two.
 
 **De deur: Cloudflare Access staat voor de hele app.** Wie niet op de lijst staat, ziet
 de schermen niet en bereikt de servercode niet. De lijst staat in `toegang.json` in de
-beheer-repo van de organisatie (`<org>/stagetwo-beheer`): welke mensen bij welke app mogen,
+beheer-repo van de organisatie (`<org>/stagetwo-beheer-tier1`): welke mensen bij welke app mogen,
 en welke paden publiek zijn. Een bouwer mag daar zelf mensen toevoegen én een pad publiek
 maken, met een pull request die alleen `toegang.json` wijzigt. Publiceren hoort bij gewoon
 bouwen.
@@ -156,7 +156,7 @@ aanvaardbaar. Wil een klant het dichter, dan verdeelt Stage Two de apps over acc
 
 ### De database van deze app
 
-Elke stack-light-app heeft haar eigen D1-database en haar eigen R2-opslag. Een app die
+Elke tier 1-app heeft haar eigen D1-database en haar eigen R2-opslag. Een app die
 niets bewaart, laat de voorbeeldtabel weg en gebruikt de database niet; dat kost niets.
 De regel erachter is **één app per verzameling gegevens**: gaat het over gegevens die al in
 een andere app zitten, dan bouw je het in die app.
@@ -347,10 +347,10 @@ tooling afdwingt, niet. Vandaar drie lagen, oplopend in sterkte:
    (`.claude/launch.json`). Zo is lokaal kijken een bewuste keuze en nooit stilletjes
    de oplevering. Een PR die aan de poort of de afspraken komt, laat de
    check `guard:template` rood staan. Voor Claude Code komt daar de Stage Two-plugin bij
-   (`Stage-Two-AI/stack-plugin-light`; Claude Code biedt de installatie zelf aan): een hook
+   (`Stage-Two-AI/stagetwo-plugin-tier1`; Claude Code biedt de installatie zelf aan): een hook
    die een tool-aanroep onderschept vóór hij wordt uitgevoerd en hem blokkeert met uitleg
-   terug aan de agent, `/stack-light:verder-werken` als aansluiting op de routes, en
-   `/stack-light:updaten` om een nieuwere template op te halen. Dat is dezelfde afspraak,
+   terug aan de agent, `/stagetwo-tier1:verder-werken` als aansluiting op de routes, en
+   `/stagetwo-tier1:updaten` om een nieuwere template op te halen. Dat is dezelfde afspraak,
    alleen eerder merkbaar: bij de toetsaanslag in plaats van bij de check. Een aansluiting
    voor een agent mag nooit een afspraak bevatten die niet in `AGENTS.md` staat; zo
    betekent "klaar" voor elke agent hetzelfde. Zonder de plugin blijft de check de grens:
@@ -382,7 +382,7 @@ De namen zitten op verschillende verdiepingen; het zijn geen concurrenten van el
 | **Migratie** | een genummerd SQL-bestand dat één databasewijziging vastlegt, zodat de historie navolgbaar is |
 | **Binding** | de koppeling in `wrangler.jsonc` die de servercode toegang geeft tot de database (`DB`) of de bestanden (`BESTANDEN`) |
 | **Apparaatsleutel** | een eigen sleutel voor een machine die de servercode aanroept zonder als mens in te loggen |
-| **Beheer-repo** | de repo `<org>/stagetwo-beheer` van de organisatie: richt apps in en houdt `toegang.json` bij |
+| **Beheer-repo** | de repo `<org>/stagetwo-beheer-tier1` van de organisatie: richt apps in en houdt `toegang.json` bij |
 | **PR (pull request)** | het voorstel om wijzigingen naar `main` te brengen. De plek waar diff, checks en preview samenkomen |
 | **Diff** | het verschil tussen oud en nieuw: precies wat er gewijzigd is |
 | **CI** | de machine die bij elke PR je checks draait en nee kan zeggen |

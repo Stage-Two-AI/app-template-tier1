@@ -1,7 +1,7 @@
 {
   "$beschrijving": [
     "Welke bestanden van de gedeelde template zijn en welke van dit project.",
-    "De skill /stack-light:updaten (Stage Two-plugin) en de beheerde run van Stage Two",
+    "De skill /stagetwo-tier1:updaten (Stage Two-plugin) en de beheerde run van Stage Two",
     "gebruiken dit om alleen de template-bestanden bij te werken, zonder ooit aan het",
     "werk van de klant te komen.",
     "",
@@ -21,7 +21,7 @@
     "nieuwer formaat in plaats van half werk te doen."
   ],
   "manifestFormaat": 1,
-  "stackVersion": 22,
+  "stackVersion": 23,
   "variant": "light",
   "vanDeTemplate": {
     "vervangen": [

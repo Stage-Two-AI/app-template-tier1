@@ -126,15 +126,19 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           ACCESS_TEAM: ${{ vars.ACCESS_TEAM }}
           ACCESS_AUD: ${{ vars.ACCESS_AUD }}
+          SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
           WRANGLER_SEND_METRICS: "false"
           PR: ${{ steps.pr.outputs.nummer }}
           MAP: ${{ runner.temp }}/preview
         # Zonder pipefail telt alleen de exitcode van tee, en blijft een mislukte upload groen.
+        # Sentry alleen met een DSN in omgeving preview; de fouten staan dan onder `test`.
         shell: bash
         run: |
           set -o pipefail
+          sentry=()
+          if [ -n "$SENTRY_DSN" ]; then sentry=(--var "SENTRY_DSN:$SENTRY_DSN"); fi
           pnpm exec wrangler versions upload -c "$MAP/wrangler.json" --preview-alias "pr-$PR" \
-            --var "ACCESS_TEAM:$ACCESS_TEAM" --var "ACCESS_AUD:$ACCESS_AUD" | tee upload.log
+            --var "ACCESS_TEAM:$ACCESS_TEAM" --var "ACCESS_AUD:$ACCESS_AUD" "${sentry[@]}" | tee upload.log
           url=$(grep -oE 'https://pr-[0-9]+-[^ ]+\.workers\.dev' upload.log | head -n 1 || true)
           if [ -z "$url" ]; then
             echo "::warning::De upload is gelukt, maar er staat geen previewlink in de uitvoer van wrangler. Er komt geen reactie in de PR."

@@ -35,7 +35,7 @@ stack-light: één Cloudflare Worker per app.
 | Bestanden | Cloudflare R2 | binding `BESTANDEN` |
 | Geplande taken | Cloudflare-cron | `triggers.crons` in `wrangler.jsonc`, `scheduled` in `worker/index.ts` |
 | Deur | Cloudflare Access, plus de controle in `worker/lib/access.ts` | `toegang.json` in de beheer-repo |
-| Fouten | Sentry (schermen) | `src/lib/fouten.ts` |
+| Fouten | Sentry (schermen en servercode) | `src/lib/fouten.ts`, `worker/lib/fouten.ts` |
 
 Achtergrond en het waarom: `docs/WERKWIJZE.md`.
 
@@ -58,10 +58,10 @@ src/features/          schermen, per onderwerp
 src/lib/               omgeving, validatie, praten met /api, hulpjes
 worker/index.ts        de servercode: routes onder /api, en de geplande taken
 worker/routes/         routes per onderwerp
-worker/lib/            de controle van de deur, apparaatsleutels, de vorm van de database
+worker/lib/            de controle van de deur, apparaatsleutels, de vorm van de database, foutmelding
 worker/apparaten.json  vingerafdrukken van de apparaatsleutels (geen geheimen)
 migrations/            elke databasewijziging, in volgorde
-tests/helpers/d1.ts    de nagebootste D1 voor de tests
+tests/helpers/         de nagebootste D1 en Sentry voor de tests
 e2e/                   end-to-end tests
 scripts/               de guards uit de kwaliteitspoort
 docs/routes/           de vaste routes, stap voor stap (zie Werkwijzen)
@@ -148,9 +148,9 @@ nieuwe computer klaarzetten), `/stack-light:nieuwe-app`, `/stack-light:verder-we
 ## Wat je niet aanpast
 
 `.github/workflows/`, `.claude/`, `scripts/`, `worker/lib/access.ts`, `worker/lib/apparaat.ts`,
-`worker/lib/db.ts`, `tests/helpers/`, de tests van de template in `tests/unit/`,
-`docs/WERKWIJZE.md`, `docs/routes/` en dit bestand onder de markering komen uit de gedeelde
-template en worden bijgewerkt met `/stack-light:updaten`, als pull request. De check
+`worker/lib/db.ts`, `worker/lib/fouten.ts`, `tests/helpers/`, de tests van de template in
+`tests/unit/`, `docs/WERKWIJZE.md`, `docs/routes/` en dit bestand onder de markering komen uit
+de gedeelde template en worden bijgewerkt met `/stack-light:updaten`, als pull request. De check
 `guard:template` laat een PR die eraan komt rood staan; in Claude Code houdt de hook van de
 Stage Two-plugin de wijziging al bij de toetsaanslag tegen. Klopt er iets niet, meld het dan
 bij Stage Two: dan krijgt elk project de verbetering, in plaats van dit project alleen.

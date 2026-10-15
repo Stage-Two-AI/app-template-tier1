@@ -21,7 +21,7 @@
     "nieuwer formaat in plaats van half werk te doen."
   ],
   "manifestFormaat": 1,
-  "stackVersion": 21,
+  "stackVersion": 22,
   "variant": "light",
   "vanDeTemplate": {
     "vervangen": [
@@ -53,7 +53,10 @@
       "worker/lib/access.test.ts",
       "worker/lib/apparaat.ts",
       "worker/lib/db.ts",
+      "worker/lib/fouten.ts",
+      "worker/lib/fouten.test.ts",
       "tests/helpers/d1.ts",
+      "tests/helpers/sentry.ts",
       "tsconfig.worker.json",
       "tests/unit/cloudflare-config.test.ts",
       "tests/unit/guard-cloudflare.test.ts",

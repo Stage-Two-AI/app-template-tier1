@@ -1,10 +1,10 @@
 # <projectnaam>
 
-> **stack-light, het lichte spoor van de Stage Two-stack.** Deze template hoort bij de plugin
-> `Stage-Two-AI/stack-plugin-light`: de app is één Worker bij Cloudflare, met de schermen,
+> **Tier 1 van de Stage Two-stack.** Deze template hoort bij de plugin
+> `Stage-Two-AI/stagetwo-plugin-tier1`: de app is één Worker bij Cloudflare, met de schermen,
 > de servercode, een eigen database (D1) en eigen bestandsopslag (R2), achter de inlog van
-> Cloudflare. Het spoor met Cloudflare en Supabase is `Stage-Two-AI/stack-template-cloudflare`
-> met de plugin `Stage-Two-AI/stack-plugin-cloudflare`.
+> Cloudflare. Tier 2, met Cloudflare en Supabase, is `Stage-Two-AI/app-template-tier2`
+> met de plugin `Stage-Two-AI/stagetwo-plugin-tier2`.
 
 <!-- Vervang <projectnaam> en schrijf hieronder in één zin wat deze app doet,
      in gewone taal, vanuit de gebruiker. -->
@@ -38,13 +38,13 @@ het overzicht". De vaste route staat in `docs/routes/verder-werken.md`; je assis
 hoort die zelf te pakken. Doet hij dat niet, zeg dan: "volg de route in
 docs/routes/verder-werken.md".
 
-**Werk je met Claude Code?** Installeer dan de Stage Two-plugin voor stack-light. Die geeft
-je assistent vier commando's (`/stack-light:installatie`, `/stack-light:nieuwe-app`,
-`/stack-light:verder-werken` en `/stack-light:updaten`), houdt hem tegen als hij aan de
+**Werk je met Claude Code?** Installeer dan de Stage Two-plugin voor tier 1. Die geeft
+je assistent vier commando's (`/stagetwo-tier1:installatie`, `/stagetwo-tier1:nieuwe-app`,
+`/stagetwo-tier1:verder-werken` en `/stagetwo-tier1:updaten`), houdt hem tegen als hij aan de
 gedeelde werkwijze wil zitten, en meldt het als er een nieuwere versie van die werkwijze is;
-ophalen doe je dan zelf met `/stack-light:updaten`. Wat de plugin precies doet en hoe je hem
+ophalen doe je dan zelf met `/stagetwo-tier1:updaten`. Wat de plugin precies doet en hoe je hem
 installeert staat op
-[github.com/Stage-Two-AI/stack-plugin-light](https://github.com/Stage-Two-AI/stack-plugin-light).
+[github.com/Stage-Two-AI/stagetwo-plugin-tier1](https://github.com/Stage-Two-AI/stagetwo-plugin-tier1).
 Werk je met een andere assistent, dan mis je alleen die gemakken: de afspraken en de
 controles gelden voor iedereen.
 
@@ -100,7 +100,7 @@ haast hebt.
   app; je assistent weet hoe.
 - **Een sleutel van een ander systeem** (Stripe, Resend, een AI-dienst): die zet de owner van
   je organisatie, niet de bouwer.
-- **Een compleet nieuwe app**: typ `/stack-light:nieuwe-app` in een lege map. Een nieuwe app
+- **Een compleet nieuwe app**: typ `/stagetwo-tier1:nieuwe-app` in een lege map. Een nieuwe app
   krijgt een eigen werkplaats, dus die kun je niet vanuit deze map beginnen.
 - **Iets aan de instellingen, het domein of een rekening**: dat regelt Stage Two.
 
@@ -113,8 +113,8 @@ haast hebt.
 
 ## Waar deze werkplaats vandaan komt
 
-Deze app is begonnen uit de **stack-template-light** van Stage Two:
-[github.com/Stage-Two-AI/stack-template-light](https://github.com/Stage-Two-AI/stack-template-light).
+Deze app is begonnen uit de **app-template (tier 1)** van Stage Two:
+[github.com/Stage-Two-AI/app-template-tier1](https://github.com/Stage-Two-AI/app-template-tier1).
 Die template is openbaar. Dat is een bewuste keuze: zo kan elke klant er zonder
 toestemming of sleutel van Stage Two nieuwe apps van maken en verbeteringen uit ophalen,
 ook lang nadat Stage Two vertrokken is. De template bevat alleen de bouwstenen en de
@@ -126,7 +126,7 @@ Verbetert Stage Two de werkwijze, dan krijgt deze app dat als versie erbij: een 
 de bestanden hier (de controles, de afspraken, de routes) komt uit de template en wordt
 in zijn geheel vervangen; alles wat van dit project is, blijft staan. Wat waarvan is,
 staat in `.claude/stack-manifest.json`. Ophalen doe je zelf, wanneer jij wilt, met
-`/stack-light:updaten` uit de Stage Two-plugin; het komt als pull request die jij bekijkt en
+`/stagetwo-tier1:updaten` uit de Stage Two-plugin; het komt als pull request die jij bekijkt en
 goedkeurt. De versie waar deze app op staat, staat in `.claude/stack-version`.
 
 ## De app op je eigen computer zien terwijl je bouwt (optioneel)

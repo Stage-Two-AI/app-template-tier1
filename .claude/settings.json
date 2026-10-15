@@ -1,14 +1,14 @@
 {
   "extraKnownMarketplaces": {
-    "stagetwo-light": {
+    "stagetwo-tier1": {
       "source": {
         "source": "github",
-        "repo": "Stage-Two-AI/stack-plugin-light"
+        "repo": "Stage-Two-AI/stagetwo-plugin-tier1"
       },
       "autoUpdate": true
     }
   },
   "enabledPlugins": {
-    "stack-light@stagetwo-light": true
+    "stagetwo-tier1@stagetwo-tier1": true
   }
 }

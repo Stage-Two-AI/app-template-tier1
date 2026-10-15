@@ -43,7 +43,7 @@ de hand doet.
 
 Eenmalig op de computer waar je werkt. Je assistent kan dit voor je controleren en
 installeren; vraag hem "controleer of ik lokaal kan kijken". In Claude Code doet
-`/stack-light:installatie` het.
+`/stagetwo-tier1:installatie` het.
 
 | Wat | Waarvoor | Hoe je ziet of het er is |
 |---|---|---|

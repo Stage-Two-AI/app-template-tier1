@@ -7,7 +7,12 @@ on:
     # dat in oktober 2026 meer dan de helft van de Actions-minuten. Drie guards lezen een
     # bevestigingsregel uit de PR-tekst; die halen de tekst live op (stap "PR-tekst
     # ophalen"), dus komt zo'n regel er later bij, dan is "Re-run failed jobs" genoeg.
-    types: [opened, synchronize, reopened]
+    #
+    # `ready_for_review`: een concept-PR (draft) krijgt alleen de snelle job "Code"; de
+    # zware job "Database en end-to-end" draait pas als de PR op klaar wordt gezet. Zo
+    # wacht niemand per tussenstap op de browsertest, terwijl mergen zonder die test
+    # niet kan: een concept kan niet mergen, en "op klaar zetten" start de hele poort.
+    types: [opened, synchronize, reopened, ready_for_review]
   # Geen run meer na een merge op `main`: de ruleset eist dat de branch bij is met main,
   # dus de PR-run heeft precies deze code al getest. Een tweede run kostte bij Richplant
   # een kwart van de Actions-minuten (oktober 2026). Uitrollen heeft zijn eigen workflow.
@@ -93,8 +98,13 @@ jobs:
   # Workers-omgeving, met een lokale D1 waarop alle migraties draaien. Geen sleutels, en
   # niets bij Cloudflare wordt aangeraakt. De naam blijft gelijk aan die op het andere spoor,
   # want hij staat als verplichte check in de ruleset.
+  #
+  # Niet bij een concept-PR: zie `ready_for_review` bovenaan. De overgeslagen job telt voor
+  # GitHub als geslaagd, maar dat is veilig: een concept kan niet mergen, en op klaar zetten
+  # start een nieuwe run die dan wel alles doet (de check staat meteen weer op "bezig").
   database:
     name: Database en end-to-end
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -108,8 +118,27 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # De browser van Playwright bewaren tussen runs (sleutel: de Playwright-versie uit de
+      # lockfile). Bij een treffer zijn alleen de systeempakketten nog nodig.
+      - name: Playwright-versie bepalen
+        id: playwright
+        # Uit het pakket zelf, niet via `pnpm exec`: pnpm 11 zet soms "Already up to date" op stdout.
+        run: echo "versie=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Browser uit de cache
+        id: browser-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.versie }}
+
       - name: Browser installeren
+        if: steps.browser-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Systeempakketten voor de browser
+        if: steps.browser-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
 
       # Zet zelf de lokale database klaar (alle migraties, dus ook een kapotte migratie valt
       # hier al op) en draait de gebouwde app.

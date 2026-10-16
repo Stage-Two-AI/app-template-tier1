@@ -147,6 +147,17 @@ describe("preview-uitrollen.yml: de upload vanaf main", () => {
     expect(run).not.toContain("wrangler deploy");
   });
 
+  it("zet dezelfde code ook op het vaste adres van de app (actueel-...)", () => {
+    const upload = up.steps.find((s) => (s.run ?? "").includes("wrangler versions upload"));
+    const run = upload?.run ?? "";
+    expect(run).toContain("--preview-alias actueel");
+    expect(run.match(/wrangler versions upload -c "\$MAP\/wrangler\.json"/g)).toHaveLength(2);
+    expect(run).toContain('echo "vast=');
+    const link = up.steps.find((s) => s.name === "Link in de PR zetten");
+    expect(link?.env?.VAST).toBe(gh("steps.upload.outputs.vast"));
+    expect(link?.run).toContain("Vast adres van deze app");
+  });
+
   it("geeft de servercode van de preview de DSN van Sentry mee, alleen als die er is", () => {
     const upload = up.steps.find((s) => (s.run ?? "").includes("wrangler versions upload"));
     expect(upload?.env?.SENTRY_DSN).toBe(gh("vars.VITE_SENTRY_DSN"));
@@ -187,5 +198,25 @@ describe("sleutels per omgeving, in alle workflows", () => {
         if (env !== undefined) expect(env, `${naam}/${jobNaam}`).toBe("preview");
       }
     }
+  });
+});
+
+describe("kwaliteitspoort", () => {
+  const ci = lees("ci.yml");
+  const typen = (ci.on.pull_request as { types: string[] }).types;
+
+  it("draait opnieuw als een concept-PR op klaar wordt gezet", () => {
+    expect(typen).toEqual(["opened", "synchronize", "reopened", "ready_for_review"]);
+  });
+
+  it("draait de snelle job altijd, de zware alleen buiten een concept-PR", () => {
+    expect(job("checks", ci).if).toBeUndefined();
+    expect(job("database", ci).if).toBe("${{ !github.event.pull_request.draft }}");
+  });
+
+  it("bewaart de browser van Playwright tussen runs", () => {
+    const cache = job("database", ci).steps.find((s) => s.uses?.startsWith("actions/cache"));
+    expect(cache?.with?.path).toBe("~/.cache/ms-playwright");
+    expect(String(cache?.with?.key)).toContain("steps.playwright.outputs.versie");
   });
 });

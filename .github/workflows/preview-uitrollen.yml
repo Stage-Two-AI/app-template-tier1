@@ -144,6 +144,17 @@ jobs:
             echo "::warning::De upload is gelukt, maar er staat geen previewlink in de uitvoer van wrangler. Er komt geen reactie in de PR."
           fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
+          # Het vaste adres van deze app: `actueel-<worker>...` wijst altijd naar de laatst
+          # gepushte PR. Zo kan de klant één tabblad open laten staan en alleen verversen.
+          # Dezelfde gebouwde code nog een keer, met een tweede label; Access dekt het al
+          # (`*-<worker>...`). Mislukt dit, dan blijft de PR-preview gewoon staan.
+          if pnpm exec wrangler versions upload -c "$MAP/wrangler.json" --preview-alias actueel \
+            --var "ACCESS_TEAM:$ACCESS_TEAM" --var "ACCESS_AUD:$ACCESS_AUD" "${sentry[@]}" > vast.log 2>&1; then
+            echo "vast=$(grep -oE 'https://actueel-[^ ]+\.workers\.dev' vast.log | head -n 1 || true)" >> "$GITHUB_OUTPUT"
+          else
+            cat vast.log
+            echo "::warning::Het vaste preview-adres (actueel-...) is niet bijgewerkt. De preview van deze PR staat er wel."
+          fi
 
       - name: Link in de PR zetten
         if: steps.check.outputs.klaar == 'true' && steps.upload.outputs.url != ''
@@ -151,12 +162,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           URL: ${{ steps.upload.outputs.url }}
+          VAST: ${{ steps.upload.outputs.vast }}
           PR: ${{ steps.pr.outputs.nummer }}
         run: |
           # Eén reactie per PR, die bij elke push wordt bijgewerkt.
           markering='<!-- cloudflare-preview -->'
           tekst="$markering
           Cloudflare-preview: $URL
+          Vast adres van deze app (altijd de laatst gepushte PR): ${VAST:-niet bijgewerkt}
 
           Deze link staat achter dezelfde login als productie, toont de testbalk en gebruikt de
           testdatabase. Nieuwe migraties uit deze PR staan daar pas na de merge; een wijziging

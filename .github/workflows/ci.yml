@@ -122,7 +122,8 @@ jobs:
       # lockfile). Bij een treffer zijn alleen de systeempakketten nog nodig.
       - name: Playwright-versie bepalen
         id: playwright
-        run: echo "versie=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+        # Uit het pakket zelf, niet via `pnpm exec`: pnpm 11 zet soms "Already up to date" op stdout.
+        run: echo "versie=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Browser uit de cache
         id: browser-cache

@@ -105,7 +105,7 @@ migratie (zie `docs/routes/databasewijziging.md`).
   in de browser mee. Meld het adres één keer, niet bij elke wijziging.
 - Een lokale dev-server is **nooit** het antwoord op "is het klaar?". Klaar is: PR open,
   checks groen, preview-link in de beschrijving (zie `docs/routes/verder-werken.md`,
-  stap 7). Geef nooit een `localhost`-adres als opgeleverd resultaat.
+  stap 8). Geef nooit een `localhost`-adres als opgeleverd resultaat.
 - Lokaal is er geen deur: alles wat je lokaal ziet, ziet de vaste testgebruiker. Of een pad
   echt publiek is of achter de inlog staat, test je in `worker/` met een test, niet door
   lokaal te kijken.

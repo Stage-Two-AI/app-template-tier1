@@ -4,8 +4,7 @@
       "source": {
         "source": "github",
         "repo": "Stage-Two-AI/stagetwo-plugin-tier1"
-      },
-      "autoUpdate": true
+      }
     }
   },
   "enabledPlugins": {

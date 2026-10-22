@@ -9,5 +9,10 @@
   },
   "enabledPlugins": {
     "stagetwo-tier1@stagetwo-tier1": true
+  },
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
   }
 }

@@ -69,6 +69,7 @@ worker/apparaten.json  vingerafdrukken van de apparaatsleutels (geen geheimen)
 migrations/            elke databasewijziging, in volgorde
 tests/helpers/         de nagebootste D1 en Sentry voor de tests
 e2e/                   end-to-end tests
+public/                manifest en icoontjes: de app is installeerbaar op telefoon en computer
 scripts/               de guards uit de kwaliteitspoort
 docs/routes/           de vaste routes, stap voor stap (zie Werkwijzen)
 ```

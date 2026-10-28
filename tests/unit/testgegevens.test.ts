@@ -313,9 +313,11 @@ describe("pnpm data:test: echte gegevens in de lokale D1 en R2", () => {
 
   it("draait scripts/lokaal-rol.sql alleen als er meer dan commentaar in staat", () => {
     mkdirSync(join(map, "scripts"));
+    // Een bestaande app heeft dit bestand niet (het is van het project); daarom hier een
+    // eigen voorbeeld met alleen commentaar, zoals de template er een levert.
     writeFileSync(
       join(map, "scripts/lokaal-rol.sql"),
-      readFileSync(join(ROOT, "scripts/lokaal-rol.sql")),
+      "-- Geef lokaal@voorbeeld.nl een rol.\n-- insert into rollen (email, rol) values ('lokaal@voorbeeld.nl', 'beheerder');\n",
     );
     expect(dataTest().code).toBe(0);
     expect(wranglerAanroepen().some((a) => a.args.includes("scripts/lokaal-rol.sql"))).toBe(false);

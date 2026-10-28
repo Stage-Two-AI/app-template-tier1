@@ -26,7 +26,8 @@
     "guard:template": "node scripts/guard-template.mjs",
     "guard:cloudflare": "node scripts/guard-cloudflare.mjs",
     "apparaat:nieuw": "node scripts/apparaat-nieuw.mjs",
-    "db:lokaal": "wrangler d1 migrations apply DB --local"
+    "db:lokaal": "wrangler d1 migrations apply DB --local",
+    "data:test": "node scripts/testgegevens.mjs"
   },
   "dependencies": {
     "@sentry/cloudflare": "^11.3.0",

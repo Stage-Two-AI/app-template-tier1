@@ -10,6 +10,10 @@ Vraag door tot je één zin kunt opschrijven die begint met "na deze wijziging k
 gebruiker …". Lukt dat niet, dan is het verzoek nog niet scherp genoeg en is dit het
 moment om het te vragen, niet halverwege.
 
+Gaat het om een fout die in productie optreedt? Kijk dan eerst in Sentry, via de
+Sentry-koppeling in claude.ai: daar staat welke fout, waar in de code en hoe vaak. Is die
+koppeling er niet, vraag de gebruiker dan om de melding of een schermafbeelding.
+
 Is het verzoek groter dan één zin? Knip het op. **Eén pull request = één onderwerp.**
 Grote PR's zijn niet te beoordelen en er verdwijnt van alles ongemerkt in.
 
@@ -54,15 +58,25 @@ misgaan:
   `worker/env.ts` en geef een duidelijke fout als hij ontbreekt. Het geheim zelf zet de
   owner van de organisatie, niet jij: zeg de gebruiker dat.
 - Iets bewaren gaat in D1 (gegevens) of R2 (bestanden). Andere opslag houdt
-  `guard:cloudflare` tegen.
+  `guard:cloudflare` tegen. Een bestand lees je met `leesBestand` uit
+  `worker/lib/bestanden.ts`, niet rechtstreeks met `c.env.BESTANDEN.get`: dan werkt het ook
+  op je eigen computer met de echte bestanden.
+- Verstuurt de app mail? Haal elke mail eerst door `bepaalOntvangers` uit
+  `worker/lib/mail.ts`. In de preview en op je eigen computer staan echte gegevens; zo gaat
+  daar elke mail naar het testadres in `wrangler.jsonc` in plaats van naar een klant. Is dat
+  adres nog leeg, vraag de gebruiker dan naar welk adres testmails mogen, en zet het als
+  `vars.TESTMAIL_ADRES` bovenaan `wrangler.jsonc` (de preview ziet het pas na de merge).
 
 Raakt je wijziging de database (een tabel, kolom of index)? Lees dan nu
 `docs/routes/databasewijziging.md` in zijn geheel en volg die stappen erbij.
 
-Wil je tussendoor zien wat je gemaakt hebt? In de Claude-app start de preview vanzelf
-(`.claude/launch.json`), met een lokale database en zonder inlog; gebruik die ook om je
-eigen werk te controleren. Met een andere assistent: `docs/routes/lokaal-kijken.md`. Het is
-een hulpmiddel tijdens het bouwen, niet de oplevering: die volgt hieronder.
+**Kijk eerst lokaal.** In de Claude-app start de preview vanzelf (`.claude/launch.json`):
+de app op deze computer, zonder inlog, als de testgebruiker `lokaal@voorbeeld.nl` en met
+een kopie van de echte gegevens van afgelopen nacht. Daar controleer je je eigen werk,
+scherm voor scherm, voordat je iets pusht. Met een andere assistent:
+`docs/routes/lokaal-kijken.md` en `pnpm data:test`. Zie je weinig omdat de testgebruiker
+geen rol heeft? Zet de rol in `scripts/lokaal-rol.sql`. De Cloudflare-preview hieronder is
+het laatste nakijken, door de mens; het is ook de oplevering.
 
 ## Stap 4: Schrijf de test erbij
 
@@ -114,14 +128,21 @@ als reactie in de PR heeft gezet en plak de PR-link erin. Die reactie noemt er t
   verandert nooit. Geef het de gebruiker één keer; hij kan het open laten staan, ook op een
   tablet, en hoeft na een push alleen te verversen.
 
-**Kijk zelf eerst.** Open de preview in de browser in de zijbalk van de Claude-app (of, als
+Moedig de gebruiker (en de klant) aan om daar zelf in te loggen en rond te klikken. Hij logt
+in zoals in productie en heeft daar dezelfde rechten: de testdatabase is een kopie van
+productie van afgelopen nacht, en rollen die aan een mailadres hangen gaan mee. Wat hij er
+verandert, raakt productie niet en is de volgende ochtend weer weg. Mail gaat er alleen naar
+het testadres.
+
+**Kijk zelf eerst.** Je hebt het lokaal al gezien; loop de wijziging hier nog één keer na.
+Open de preview in de browser in de zijbalk van de Claude-app (of, als
 die er niet is, in Chrome via Claude in Chrome) en loop de wijziging na voordat je de
 gebruiker vraagt te kijken. Zie je het inlogscherm van Cloudflare Access, vraag de gebruiker
 dan één keer in te loggen met zijn werkaccount, in dat paneel; de browser onthoudt dat voor
 alle apps. Lukt geen van beide, geef dan de link en zeg dat je hem niet zelf kon openen.
 
 De preview draait achter dezelfde login als productie, met een eigen testdatabase en eigen
-testbestanden. Twee dingen zie je daar pas na de merge: nieuwe migraties uit deze PR, en
+testbestanden: een kopie van productie van afgelopen nacht. Twee dingen zie je daar pas na de merge: nieuwe migraties uit deze PR, en
 wijzigingen aan `wrangler.jsonc`. Zeg dat erbij als de gebruiker ze in de preview wil proberen.
 
 **Push per afgerond stukje, niet per kleine wijziging.** Kleine stappen bekijk je in de

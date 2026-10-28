@@ -140,6 +140,30 @@ computer staat hij altijd uit. Er gaan geen persoonsgegevens mee: geen gebruiker
 IP-adres, geen cookies, headers, bodies of queryparameters. Een fout in een route geeft de
 gebruiker hetzelfde antwoord als zonder Sentry ("Er ging iets mis"); Sentry krijgt hem erbij.
 
+**De assistent leest Sentry mee.** Het Sentry-account staat op naam van je organisatie, op het
+gratis plan met één login. De assistent leest de fouten via de Sentry-koppeling in claude.ai
+(`mcp.sentry.dev`); die werkt ook in een cloudsessie. Een nieuwe bouwer zet die koppeling aan
+in zijn eigen claude.ai, en wie de login beheert, logt daar één keer in op het scherm van de
+bouwer; zo ziet de bouwer het wachtwoord nooit. Alle koppelingen hangen aan die ene login.
+Gaat er iemand weg, dan is één koppeling los intrekken waarschijnlijk niet mogelijk: trek ze
+dan allemaal in (wachtwoord van Sentry wijzigen) en koppel de anderen opnieuw, of haal de
+persoon uit het Team-account van Claude. Bij een fout in productie kijkt de assistent eerst
+in Sentry, voordat hij gaat zoeken.
+
+**Mail buiten productie gaat naar één testadres.** In de preview en op je eigen computer
+staan echte gegevens, dus ook echte mailadressen van klanten. Daarom gaat elke mail uit de
+servercode eerst door `bepaalOntvangers` in `worker/lib/mail.ts`:
+
+| Waar | Naar wie |
+|---|---|
+| productie | de ontvangers zoals ze in de code staan |
+| preview en je eigen computer | alleen naar het testadres, zonder cc en bcc, met `[test]` voor het onderwerp |
+| preview en je eigen computer, zonder testadres | niemand: de mail gaat niet weg |
+
+Het testadres staat bovenaan `wrangler.jsonc`, als `vars.TESTMAIL_ADRES`. Het is geen
+geheim en het hoort bij de app, niet bij de bouwer: de preview wordt gedeeld. De uitrol van
+de preview geeft het mee, en op je eigen computer zet de preview het in `.dev.vars`.
+
 **Eén adres, en dat staat achter Access.** De deur werkt alleen als er geen tweede adres
 is om omheen te gaan. `wrangler.jsonc` kent daarom twee standen, en
 `scripts/lib/cloudflare-config.mjs` weigert elke andere combinatie:
@@ -164,7 +188,9 @@ die er niet aan voldoet:
   andere opslag niet. Eén soort database en één soort bestanden, in elke app hetzelfde;
 - een omgeving `env.preview` met een **eigen** D1 en R2, nooit die van productie;
 - nooit `OMGEVING=lokaal` in `wrangler.jsonc`: die stand zet de controle van Access uit en
-  hoort alleen in `.dev.vars` op je eigen computer.
+  hoort alleen in `.dev.vars` op je eigen computer. Productie heeft geen `OMGEVING` (leeg
+  betekent productie), de preview krijgt altijd `test`;
+- `vars.TESTMAIL_ADRES` is leeg of één mailadres.
 
 **Installeerbaar als app, niet offline.** Elke app is via "Zet op beginscherm" (iPhone) of
 "Installeren" (Android, Chrome, Edge) als app te zetten: met een eigen icoon en zonder
@@ -220,13 +246,18 @@ Wat waar hoort:
 ### De testomgeving: preview en lokaal kijken raken nooit productie
 
 Elke app heeft naast productie een **testomgeving**: een eigen D1 en R2, in
-`wrangler.jsonc` onder `env.preview`. Zelfde schema, andere gegevens, los van productie.
+`wrangler.jsonc` onder `env.preview`. Zelfde schema, los van productie. Elke nacht zet de
+workflow Testdatabase verversen in de beheer-repo er een kopie van productie in: de gegevens
+van de database en de bestanden. Productie wordt daarbij alleen gelezen. Wat je in de
+testomgeving verandert, is de volgende ochtend weer weg.
 
 Wat erop draait:
 
 - **De preview van elke pull request.** Die draait als aparte Worker `<app>-preview`, met de
   testdatabase en de testbestanden. Klikken, opslaan, verwijderen in een preview raakt nooit
-  echte gegevens. De preview toont een balk dat dit de testomgeving is.
+  productie. De preview toont een balk dat dit de testomgeving is. Wie inlogt, heeft daar
+  dezelfde rechten als in productie: rollen die aan een mailadres hangen, gaan mee met de
+  kopie. Mail gaat er alleen naar het testadres (zie hoofdstuk 2).
 - **Migraties, als eerste.** Bij een merge past de workflow Uitrollen de migraties eerst toe
   op de testdatabase (de canary), dan op productie, en zet pas daarna de nieuwe code neer.
   Faalt het op de testdatabase, dan blijft productie zoals hij was.
@@ -244,6 +275,31 @@ Twee dingen om te weten over de preview, want ze verrassen mensen:
 
 **Lokaal kijken op je eigen computer** gebruikt geen van beide: daar draait een lokale D1
 in de map `.wrangler/`, opgebouwd uit alle migraties (route `docs/routes/lokaal-kijken.md`).
+Daarin laadt `pnpm data:test` de kopie van afgelopen nacht. De preview van de Claude-app doet
+dat zelf, bij de eerste start en daarna eens per dag. Zo ziet de assistent wat de klant ziet,
+zonder dat iemand hoeft in te loggen. Hoe dat werkt:
+
+- De workflow in de beheer-repo bewaart na het verversen de gegevens van de testdatabase als
+  bestand bij GitHub (een artifact, drie dagen bewaard), plus een lijst met tijdelijke
+  leeslinks naar de testbestanden (zeven dagen geldig). De laptop haalt dat op met `gh`,
+  waarmee je al bent ingelogd. Wie bij de beheer-repo mag, kan het ophalen; er komt geen
+  sleutel van Cloudflare op je computer.
+- Bestanden komen pas op je computer als de app ze vraagt: `leesBestand` in
+  `worker/lib/bestanden.ts` haalt een ontbrekend bestand dan op met de leeslink. Dat gebeurt
+  alleen in de lokale stand; in productie en de preview kan het niet.
+- Op je eigen computer ben je altijd `lokaal@voorbeeld.nl`. Dat adres staat niet in
+  productie. Hangen rechten aan een rol in de database, zet dan in `scripts/lokaal-rol.sql`
+  hoe die gebruiker een rol krijgt; dat bestand draait na elk inladen.
+
+**Er staat dus een kopie van echte gegevens op je laptop.** Bij tier 1 is dat letterlijk zo:
+de hele testdatabase en de bestanden die je hebt bekeken, staan in de map `.wrangler/` van
+het project. Daarom:
+
+- **Schijfversleuteling moet aan staan:** FileVault op een Mac, BitLocker op Windows. Zonder
+  versleuteling kan wie de laptop vindt of steelt de gegevens lezen.
+- Zet het project niet in een map die naar de cloud synchroniseert (iCloud Drive, Dropbox,
+  OneDrive): dan gaat de kopie mee naar die dienst.
+- Werk je niet meer aan de app, of gaat de laptop de deur uit: gooi de map `.wrangler/` weg.
 
 ### Hoe een wijziging aan de database gaat
 
@@ -467,6 +523,7 @@ De namen zitten op verschillende verdiepingen; het zijn geen concurrenten van el
 | **Migratie** | een genummerd SQL-bestand dat één databasewijziging vastlegt, zodat de historie navolgbaar is |
 | **Binding** | de koppeling in `wrangler.jsonc` die de servercode toegang geeft tot de database (`DB`) of de bestanden (`BESTANDEN`) |
 | **Apparaatsleutel** | een eigen sleutel voor een machine die de servercode aanroept zonder als mens in te loggen |
+| **Artifact** | een bestand dat een workflow bij GitHub bewaart, een paar dagen. Alleen wie bij de repo mag, kan het ophalen |
 | **Beheer-repo** | de repo `<org>/stagetwo-beheer-tier1` van de organisatie: richt apps in en houdt `toegang.json` bij |
 | **Beheerserver** | optioneel: een server van je organisatie met Claude Code, waarmee je na de overdracht zelf de inrichting aanpast |
 | **PR (pull request)** | het voorstel om wijzigingen naar `main` te brengen. De plek waar diff, checks en preview samenkomen |

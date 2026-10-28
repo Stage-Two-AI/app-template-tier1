@@ -1,0 +1,12 @@
+-- Een rol voor de vaste lokale gebruiker, na het inladen van de testgegevens.
+--
+-- Op je eigen computer ben je altijd lokaal@voorbeeld.nl (zie worker/lib/access.ts). Dat adres
+-- staat niet in de gegevens van productie. Hangen rechten in deze app aan een rol in de
+-- database, dan ziet die gebruiker na `pnpm data:test` dus weinig. Dit bestand geeft hem een
+-- rol: het draait na elke keer inladen, alleen op de lokale database.
+--
+-- Dit bestand is van deze app. Zolang hier alleen commentaar staat, gebeurt er niets. Een
+-- voorbeeld, als de app een tabel `rollen` met een kolom `email` heeft:
+--
+-- insert into rollen (email, rol) values ('lokaal@voorbeeld.nl', 'beheerder')
+--   on conflict (email) do update set rol = excluded.rol;

@@ -54,6 +54,7 @@ Achtergrond en het waarom: `docs/WERKWIJZE.md`.
 | `pnpm test` | unittests: schermen in een nagebootste browser, servercode in Node met een nagebootste D1 |
 | `pnpm test:e2e` | end-to-end test in een echte browser, tegen de gebouwde app met een lokale D1 |
 | `pnpm db:lokaal` | alle migraties op de lokale D1 (in `.wrangler/`) |
+| `pnpm data:test` | de kopie van de echte gegevens van afgelopen nacht in de lokale D1 en R2 (via `gh`, uit de beheer-repo) |
 | `pnpm apparaat:nieuw <naam>` | een machine een eigen sleutel geven (zie hieronder) |
 
 ## Waar wat staat
@@ -64,13 +65,15 @@ src/features/          schermen, per onderwerp
 src/lib/               omgeving, validatie, praten met /api, hulpjes
 worker/index.ts        de servercode: routes onder /api, en de geplande taken
 worker/routes/         routes per onderwerp
-worker/lib/            de controle van de deur, apparaatsleutels, de vorm van de database, foutmelding
+worker/lib/            de controle van de deur, apparaatsleutels, de vorm van de database, foutmelding,
+                       bestanden lezen (bestanden.ts) en de ontvangers van mail (mail.ts)
 worker/apparaten.json  vingerafdrukken van de apparaatsleutels (geen geheimen)
 migrations/            elke databasewijziging, in volgorde
 tests/helpers/         de nagebootste D1 en Sentry voor de tests
 e2e/                   end-to-end tests
 public/                manifest en icoontjes: de app is installeerbaar op telefoon en computer
-scripts/               de guards uit de kwaliteitspoort
+scripts/               de guards uit de kwaliteitspoort, de preview en `pnpm data:test`
+scripts/lokaal-rol.sql de rol van de lokale testgebruiker (van dit project)
 docs/routes/           de vaste routes, stap voor stap (zie Werkwijzen)
 ```
 
@@ -78,8 +81,9 @@ docs/routes/           de vaste routes, stap voor stap (zie Werkwijzen)
 
 - **Kijken mag lokaal, opleveren gaat via de Cloudflare-preview van de PR.** In de
   Claude-app start de preview (`.claude/launch.json`, `scripts/preview.mjs`) de app op de
-  computer van de gebruiker, met een lokale database en zonder inlog; gebruik die om je
-  werk te controleren en om de gebruiker te laten meekijken. Zet geen dev-server in een
+  computer van de gebruiker, zonder inlog, als `lokaal@voorbeeld.nl` en met een kopie van de
+  echte gegevens van afgelopen nacht; gebruik die eerst om je werk te controleren en om de
+  gebruiker te laten meekijken. De Cloudflare-preview is het laatste nakijken. Zet geen dev-server in een
   terminal op, en geef nooit een `localhost`-adres als resultaat: `pnpm dev` weigert om die
   reden, het is geen storing. Andere assistenten volgen `docs/routes/lokaal-kijken.md`.
 - **Geen `any`, geen `@ts-ignore`, geen `as unknown as`, geen non-null `!`.** Los de echte
@@ -106,6 +110,15 @@ docs/routes/           de vaste routes, stap voor stap (zie Werkwijzen)
   in de servercode uit `c.env`, zet hem als optioneel in `worker/env.ts`, geef een duidelijke
   fout als hij ontbreekt, en zeg de gebruiker dat de owner hem moet zetten. Zet geen
   geheim in een `VITE_`-variabele: die zitten in de bundel die iedereen downloadt.
+- **Lokaal staan echte gegevens.** Kopieer ze nooit naar een chat, issue, test of bestand in
+  git; verzin testgegevens zelf. De lokale testgebruiker krijgt zijn rol via
+  `scripts/lokaal-rol.sql`, nooit via een uitzondering in de servercode.
+- **Mail gaat altijd door `bepaalOntvangers`** uit `worker/lib/mail.ts`, vóór de aanroep
+  van de maildienst. Buiten productie stuurt die alles naar `vars.TESTMAIL_ADRES` in
+  `wrangler.jsonc`, of niets. Stuur nooit mail om die functie heen.
+- **Bestanden lees je met `leesBestand`** uit `worker/lib/bestanden.ts`, niet rechtstreeks
+  met `c.env.BESTANDEN.get`. Lokaal haalt die een ontbrekend bestand op uit de testbestanden.
+- **Fouten in productie** lees je eerst in Sentry, via de Sentry-koppeling in claude.ai.
 - **Databasewijzigingen altijd als migratie** in `migrations/`, met het volgende nummer.
   Lees eerst `docs/routes/databasewijziging.md`. Een migratie die al in main staat, pas je
   nooit meer aan: schrijf een nieuw bestand erbij.
@@ -154,8 +167,9 @@ nieuwe computer klaarzetten), `/stagetwo-tier1:nieuwe-app`, `/stagetwo-tier1:ver
 
 ## Wat je niet aanpast
 
-`.github/workflows/`, `.claude/`, `scripts/`, `worker/lib/access.ts`, `worker/lib/apparaat.ts`,
-`worker/lib/db.ts`, `worker/lib/fouten.ts`, `tests/helpers/`, de tests van de template in
+`.github/workflows/`, `.claude/`, `scripts/` (behalve `scripts/lokaal-rol.sql`),
+`worker/lib/access.ts`, `worker/lib/apparaat.ts`, `worker/lib/bestanden.ts`, `worker/lib/db.ts`,
+`worker/lib/fouten.ts`, `worker/lib/mail.ts`, `tests/helpers/`, de tests van de template in
 `tests/unit/`, `docs/WERKWIJZE.md`, `docs/routes/` en dit bestand onder de markering komen uit
 de gedeelde template en worden bijgewerkt met `/stagetwo-tier1:updaten`, als pull request. De check
 `guard:template` laat een PR die eraan komt rood staan; in Claude Code houdt de hook van de

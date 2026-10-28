@@ -16,6 +16,11 @@ export interface Env {
    * computer: dan is er geen Access en geldt een vaste testgebruiker).
    */
   OMGEVING?: string;
+  /**
+   * Waar mail naartoe gaat buiten productie: `vars.TESTMAIL_ADRES` in wrangler.jsonc (geen
+   * geheim). Zie `bepaalOntvangers` in worker/lib/mail.ts.
+   */
+  TESTMAIL_ADRES?: string;
   /** Het Zero Trust-team, bijvoorbeeld `stagetwo`. Zet de uitrol. */
   ACCESS_TEAM?: string;
   /** De Audience-tags van de Access-apps voor deze app, met komma's. Zet de uitrol. */

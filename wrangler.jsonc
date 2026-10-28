@@ -14,6 +14,13 @@
   "name": "light-proef",
   "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
+  "vars": {
+    // Naar welk adres mails gaan in de preview en op je eigen computer. Daar staan echte
+    // gegevens in, dus zonder dit adres kan een klant een testmail krijgen. Leeg: buiten
+    // productie gaat er geen mail weg. Geen geheim; het adres hoort bij de app, niet bij de
+    // bouwer, want de preview wordt gedeeld. Zie bepaalOntvangers in worker/lib/mail.ts.
+    "TESTMAIL_ADRES": ""
+  },
   "assets": {
     "not_found_handling": "single-page-application",
     // /api gaat altijd naar de servercode, ook als er toevallig een bestand zo heet.

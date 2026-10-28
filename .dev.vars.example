@@ -5,6 +5,10 @@
 # lokaal@voorbeeld.nl. Deze stand mag nooit in wrangler.jsonc (guard:cloudflare weigert hem).
 OMGEVING=lokaal
 
+# Waar mail op je eigen computer naartoe gaat. De preview neemt dit over uit
+# vars.TESTMAIL_ADRES in wrangler.jsonc, bij elke start: pas het daar aan, niet hier.
+TESTMAIL_ADRES=
+
 # Geheimen van andere systemen (Stripe, Resend, een AI-dienst) voor lokaal testen, met een
 # testsleutel. In productie zet de owner ze als geheim van de Worker, nooit in git.
 # RESEND_API_KEY=

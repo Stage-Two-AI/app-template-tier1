@@ -137,6 +137,18 @@ describe("cloudflareConfig: één Worker met servercode, D1 en R2", () => {
     );
   });
 
+  it("laat bovenaan een leeg testmailadres of één mailadres toe, verder niets", () => {
+    for (const adres of ["", "test@bedrijf.nl"]) {
+      const r = controleer({ ...GOED, vars: { TESTMAIL_ADRES: adres } });
+      expect(r.code, r.uitvoer).toBe(0);
+    }
+    for (const adres of ["geen adres", "a@b.nl, c@d.nl", 42]) {
+      const r = controleer({ ...GOED, vars: { TESTMAIL_ADRES: adres } });
+      expect(r.code).toBe(1);
+      expect(r.uitvoer).toContain("vars.TESTMAIL_ADRES");
+    }
+  });
+
   it("houdt de twee standen voor het adres", () => {
     const tweeAdressen = { ...GOED, workers_dev: true };
     expect(controleer(tweeAdressen).uitvoer).toContain("twee adressen");
@@ -215,5 +227,24 @@ describe("isIngericht en previewConfig", () => {
     expect(uit.vars.OMGEVING).toBe("test");
     expect(uit.routes).toBeUndefined();
     expect(JSON.stringify(uit)).not.toContain('"prod"');
+  });
+
+  it("geeft de preview het testmailadres van bovenaan mee, met OMGEVING altijd test", () => {
+    const metAdres = {
+      ...GOED,
+      vars: { TESTMAIL_ADRES: "test@bedrijf.nl", OMGEVING: "productie" },
+    };
+    writeFileSync(join(map, "wrangler.jsonc"), JSON.stringify(metAdres));
+    const config = 'm.previewConfig(m.leesWrangler(), { worker: "w.js", assets: "c" })';
+    const uit = JSON.parse(lib(`console.log(JSON.stringify(${config}.vars))`));
+    expect(uit).toEqual({ TESTMAIL_ADRES: "test@bedrijf.nl", OMGEVING: "test" });
+
+    writeFileSync(
+      join(map, "wrangler.jsonc"),
+      JSON.stringify({ ...GOED, vars: { TESTMAIL_ADRES: "" } }),
+    );
+    expect(JSON.parse(lib(`console.log(JSON.stringify(${config}.vars))`))).toEqual({
+      OMGEVING: "test",
+    });
   });
 });

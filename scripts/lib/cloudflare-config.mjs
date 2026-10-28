@@ -20,6 +20,12 @@ import { readFileSync } from "node:fs";
  *     omgeving uit main, nooit die uit de pull request.
  *   - `vars.OMGEVING` mag nooit `lokaal` zijn: die stand zet de controle van Access uit en
  *     hoort alleen in `.dev.vars` op je eigen computer.
+ *   - `vars.TESTMAIL_ADRES` (bovenaan) is leeg of één mailadres: daar gaat mail naartoe
+ *     buiten productie (worker/lib/mail.ts).
+ *
+ * Welke `OMGEVING` waar geldt: productie heeft er geen (leeg = productie), de preview krijgt
+ * altijd `test` (`previewConfig` hieronder), en je eigen computer `lokaal` (`.dev.vars`, gezet
+ * door scripts/lib/lokaal.mjs).
  */
 const TOEGESTAAN = new Set([
   "$schema",
@@ -59,6 +65,9 @@ const OPSLAG = new Set([
   "analytics_engine_datasets",
   "secrets_store_secrets",
 ]);
+
+/** Leeg, of één mailadres. */
+const TESTMAIL = /^$|^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const STANDEN =
   "Er zijn twee standen: de standaardstand (een route met `custom_domain: true` en `workers_dev: false`) " +
@@ -177,6 +186,12 @@ export function cloudflareConfig(pad = "wrangler.jsonc") {
       );
     }
   }
+  const testmail = isObject(config.vars) ? config.vars.TESTMAIL_ADRES : undefined;
+  if (testmail !== undefined && (typeof testmail !== "string" || !TESTMAIL.test(testmail))) {
+    fout(
+      '`vars.TESTMAIL_ADRES` hoort leeg te zijn of één mailadres, zoals "test@bedrijf.nl": daar gaan de mails naartoe in de preview en op je eigen computer.',
+    );
+  }
   const preview = config.env?.preview;
   if (!isObject(preview)) {
     fout("`env.preview` ontbreekt: de previews van pull requests hebben een eigen D1 en R2 nodig.");
@@ -284,7 +299,13 @@ export function previewConfig(config, { worker, assets }) {
     workers_dev: true,
     preview_urls: true,
     observability: preview.observability ?? config.observability ?? { enabled: true },
-    vars: { ...(preview.vars ?? {}), OMGEVING: "test" },
+    // `vars` erft wrangler niet van bovenaan naar een omgeving, dus het testadres gaat hier
+    // expres mee. OMGEVING is altijd `test`, wat er in de pull request ook staat.
+    vars: {
+      ...(config.vars?.TESTMAIL_ADRES ? { TESTMAIL_ADRES: config.vars.TESTMAIL_ADRES } : {}),
+      ...(preview.vars ?? {}),
+      OMGEVING: "test",
+    },
     d1_databases: preview.d1_databases ?? [],
     r2_buckets: preview.r2_buckets ?? [],
     ...(preview.ai ? { ai: preview.ai } : {}),

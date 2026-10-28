@@ -114,24 +114,46 @@ export function appUitGit() {
 }
 
 /**
- * De beheer-repo van tier 1: `STAGETWO_BEHEER_REPO` als die is gezet (`naam` of
- * `org/naam`), anders `<org>/stagetwo-beheer-tier1`, anders de enige repo in de organisatie
- * die eindigt op `-beheer-tier1`.
+ * De beheer-repo van tier 1 waar deze app in staat: `STAGETWO_BEHEER_REPO` als die is gezet
+ * (`naam` of `org/naam`), anders de repo's in de organisatie die eindigen op `-beheer-tier1`
+ * (`stagetwo-beheer-tier1` ook). Is er één, dan die. Zijn er meer (Stage Two zelf heeft er
+ * twee), dan de enige waarin de app in `toegang.json` onder `apps` staat.
  */
-export function vindBeheerRepo(org, omgeving = process.env) {
+export function vindBeheerRepo(org, app, omgeving = process.env) {
   const gekozen = omgeving.STAGETWO_BEHEER_REPO?.trim();
   if (gekozen) return gekozen.includes("/") ? gekozen : `${org}/${gekozen}`;
-  const standaard = `${org}/stagetwo-beheer-tier1`;
-  if (draai("gh", ["api", `repos/${standaard}`, "--jq", ".full_name"]).ok) return standaard;
   const namen = JSON.parse(gh(["repo", "list", org, "--json", "name", "--limit", "1000"]))
     .map((r) => r.name)
     .filter((n) => typeof n === "string" && n.endsWith("-beheer-tier1"));
+  if (namen.length === 0) {
+    throw new Mislukt(
+      `Geen beheer-repo gevonden in ${org} (of je mag er niet bij). Zet STAGETWO_BEHEER_REPO als hij anders heet.`,
+    );
+  }
   if (namen.length === 1) return `${org}/${namen[0]}`;
+  const metApp = namen.filter((n) => staatInToegang(`${org}/${n}`, app));
+  if (metApp.length === 1) return `${org}/${metApp[0]}`;
   throw new Mislukt(
-    namen.length === 0
-      ? `Geen beheer-repo gevonden in ${org} (of je mag er niet bij). Zet STAGETWO_BEHEER_REPO als hij anders heet.`
-      : `Meer dan één beheer-repo in ${org} (${namen.join(", ")}). Kies er een met STAGETWO_BEHEER_REPO.`,
+    metApp.length === 0
+      ? `${app} staat in geen van de beheer-repo's in ${org} (${namen.join(", ")}). Kies er een met STAGETWO_BEHEER_REPO.`
+      : `${app} staat in meer dan één beheer-repo in ${org} (${metApp.join(", ")}). Kies er een met STAGETWO_BEHEER_REPO.`,
   );
+}
+
+/** Staat `app` in `toegang.json` van `repo` onder `apps`? Niet te lezen telt als nee. */
+function staatInToegang(repo, app) {
+  const r = draai("gh", [
+    "api",
+    `repos/${repo}/contents/toegang.json`,
+    "-H",
+    "Accept: application/vnd.github.raw",
+  ]);
+  if (!r.ok) return false;
+  try {
+    return Object.hasOwn(JSON.parse(r.stdout)?.apps ?? {}, app);
+  } catch {
+    return false;
+  }
 }
 
 /** Het nieuwste artifact `testgegevens-<app>` dat nog niet verlopen is. */
@@ -224,7 +246,7 @@ function leesLijst(pad) {
  */
 export function laadTestgegevens({ log = console.log } = {}) {
   const { org, app } = appUitGit();
-  const beheer = vindBeheerRepo(org);
+  const beheer = vindBeheerRepo(org, app);
   const artifact = nieuwsteArtifact(beheer, app);
   log(`Testgegevens van ${app} ophalen uit ${beheer} (van ${artifact.created_at})…`);
 

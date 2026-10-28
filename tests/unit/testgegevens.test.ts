@@ -113,7 +113,7 @@ type Scenario = {
 
 const STANDAARD: Scenario = {
   antwoorden: {
-    "api repos/klant-org/stagetwo-beheer-tier1": "klant-org/stagetwo-beheer-tier1",
+    "repo list klant-org": [{ name: "mijn-app" }, { name: "stagetwo-beheer-tier1" }],
     "api repos/klant-org/stagetwo-beheer-tier1/actions/artifacts": ARTIFACTS,
   },
   download: { "d1.sql": D1_SQL, "bestanden.json": BESTANDEN_JSON },
@@ -235,7 +235,6 @@ describe("pnpm data:test: echte gegevens in de lokale D1 en R2", () => {
     scenario({
       ...STANDAARD,
       antwoorden: {
-        "api repos/klant-org/stagetwo-beheer-tier1": null,
         "repo list klant-org": [
           { name: "mijn-app" },
           { name: "kl-beheer-tier1" },
@@ -249,11 +248,27 @@ describe("pnpm data:test: echte gegevens in de lokale D1 en R2", () => {
     expect(ghAanroepen().some((a) => a.includes("-R klant-org/kl-beheer-tier1"))).toBe(true);
   });
 
-  it("stopt bij twee kandidaten, en neemt STAGETWO_BEHEER_REPO als die is gezet", () => {
+  it("kiest bij twee beheer-repo's die waarin de app in toegang.json staat", () => {
     scenario({
       ...STANDAARD,
       antwoorden: {
-        "api repos/klant-org/stagetwo-beheer-tier1": null,
+        "repo list klant-org": [{ name: "stagetwo-beheer-tier1" }, { name: "prive-beheer-tier1" }],
+        "api repos/klant-org/stagetwo-beheer-tier1/contents/toegang.json": { apps: { site: [] } },
+        "api repos/klant-org/prive-beheer-tier1/contents/toegang.json": {
+          apps: { "mijn-app": [] },
+        },
+        "api repos/klant-org/prive-beheer-tier1/actions/artifacts": ARTIFACTS,
+      },
+    });
+    const r = dataTest();
+    expect(r.code, r.uitvoer).toBe(0);
+    expect(ghAanroepen().some((a) => a.includes("-R klant-org/prive-beheer-tier1"))).toBe(true);
+  });
+
+  it("stopt als de app in geen van twee kandidaten staat, en neemt STAGETWO_BEHEER_REPO als die is gezet", () => {
+    scenario({
+      ...STANDAARD,
+      antwoorden: {
         "repo list klant-org": [{ name: "a-beheer-tier1" }, { name: "b-beheer-tier1" }],
         "api repos/klant-org/eigen-beheer/actions/artifacts": ARTIFACTS,
       },

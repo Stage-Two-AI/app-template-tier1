@@ -69,7 +69,7 @@ export async function wieIsHet(
 
   const token = request.headers.get("Cf-Access-Jwt-Assertion");
   const delen = token?.split(".");
-  if (!delen || delen.length !== 3) return null;
+  if (delen?.length !== 3) return null;
   const [kopDeel, inhoudDeel, handtekening] = delen as [string, string, string];
   try {
     const kop = json<Kop>(kopDeel);

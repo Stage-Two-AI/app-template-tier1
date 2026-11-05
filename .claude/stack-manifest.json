@@ -45,6 +45,7 @@
       "scripts/lib/lokaal.mjs",
       "scripts/guard-tests.mjs",
       "scripts/guard-migrations.mjs",
+      "scripts/guard-tabellen-tests.mjs",
       "scripts/guard-secrets.mjs",
       "scripts/guard-escape-hatches.mjs",
       "scripts/guard-template.mjs",
@@ -57,6 +58,7 @@
       "scripts/apparaat-nieuw.mjs",
       "worker/lib/access.ts",
       "worker/lib/access.test.ts",
+      "worker/lib/afscherming.test.ts",
       "worker/lib/apparaat.ts",
       "worker/lib/db.ts",
       "worker/lib/fouten.ts",
@@ -67,6 +69,7 @@
       "worker/lib/bestanden.test.ts",
       "tests/helpers/d1.ts",
       "tests/helpers/sentry.ts",
+      "tests/helpers/afscherming.ts",
       "tsconfig.worker.json",
       "tests/unit/cloudflare-config.test.ts",
       "tests/unit/guard-cloudflare.test.ts",
@@ -91,6 +94,7 @@
     }
   },
   "vanHetProject": [
+    "stack.config.json",
     "src/**",
     "worker/**",
     "migrations/**",

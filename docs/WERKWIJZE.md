@@ -98,7 +98,9 @@ Een pad publiek maken gaat dus altijd op twee plekken, en je hebt ze allebei nod
 **Wie wat mag zien, regelt de servercode.** Er is geen beveiliging per rij in de database:
 D1 kent dat niet. Mag een gebruiker alleen zijn eigen gegevens zien, dan filtert de route
 daarop, met het mailadres uit `c.var.gebruiker`. Zo'n regel test je net als ander gedrag:
-vraag als gebruiker A de gegevens van B op, verwacht niets.
+vraag als gebruiker B de gegevens van A op, verwacht niets. Per tabel doet
+`controleerAfscherming` (`tests/helpers/afscherming.ts`) dat, of de tabel staat bewust gedeeld
+in `open_tabellen` in `stack.config.json`; `guard:tabellen-tests` kijkt het na.
 
 **Machines** (een server, een Pi, een script dat elke nacht iets ophaalt) loggen niet in als
 mens. Ze krijgen een eigen apparaatsleutel:

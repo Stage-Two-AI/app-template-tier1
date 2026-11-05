@@ -251,6 +251,10 @@ describe("kwaliteitspoort", () => {
     expect(job("database", ci).if).toBe("${{ !github.event.pull_request.draft }}");
   });
 
+  it("draait in de job Code de A/B-test per tabel", () => {
+    expect(job("checks", ci).steps.map((s) => s.run)).toContain("pnpm guard:tabellen-tests");
+  });
+
   it("bewaart de browser van Playwright tussen runs", () => {
     const cache = job("database", ci).steps.find((s) => s.uses?.startsWith("actions/cache"));
     expect(cache?.with?.path).toBe("~/.cache/ms-playwright");

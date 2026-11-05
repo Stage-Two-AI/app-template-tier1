@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.9/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -13,7 +13,8 @@
       "!coverage",
       "!playwright-report",
       "!test-results",
-      "!src/lib/database.types.ts"
+      "!src/lib/database.types.ts",
+      "!**/pnpm-lock.yaml"
     ]
   },
   "formatter": {
@@ -26,6 +27,16 @@
     "formatter": {
       "quoteStyle": "double",
       "semicolons": "always"
+    }
+  },
+  "markdown": {
+    "formatter": {
+      "enabled": false
+    }
+  },
+  "yaml": {
+    "formatter": {
+      "enabled": false
     }
   },
   "css": {

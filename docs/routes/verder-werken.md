@@ -92,6 +92,10 @@ beoordelaar van je werk, dus wat de tests niet dekken, dekt niemand.
   wat er níet mag: zonder gebruiker een 401, en gebruiker A ziet de gegevens van B niet.
 - **Nieuw scherm?** Een test in `src/` naast het scherm, of breid de end-to-end test in
   `e2e/` uit als het de belangrijkste route raakt.
+- **Nieuw onderdeel (een eigen hoofdscherm met een eigen pad)?** Een regel in
+  `src/onderdelen.ts`. De browsertest `e2e/onderdelen.spec.ts` opent het dan vanzelf en kijkt
+  of het zonder fout opent en zijn kop toont; `tests/unit/onderdelen.test.ts` is rood als een
+  nieuw pad in de router niet in die lijst staat.
 
 De CI blokkeert een PR die productiecode wijzigt (in `src/`, `worker/` of `migrations/`)
 zonder één enkele test aan te raken.

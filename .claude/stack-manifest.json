@@ -75,6 +75,8 @@
       "tests/unit/uitrollen-workflow.test.ts",
       "tests/unit/testgegevens.test.ts",
       "tests/unit/lokaal.test.ts",
+      "tests/unit/onderdelen.test.ts",
+      "e2e/onderdelen.spec.ts",
       "docs/WERKWIJZE.md",
       "docs/routes/verder-werken.md",
       "docs/routes/databasewijziging.md",

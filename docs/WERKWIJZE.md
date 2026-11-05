@@ -386,6 +386,12 @@ ook na verversen. Niet de randgevallen. Breekt die route, dan is de app waardelo
 dat is de test die het meest telt. Hij raakt in één keer de hele keten: build,
 servercode, database en de interface.
 
+Daarnaast opent de browsertest **elk onderdeel** van de app (`e2e/onderdelen.spec.ts`): per
+regel in `src/onderdelen.ts` het hoofdscherm, met de vraag of het zonder fout opent en zijn kop
+toont. Zo komt een onderdeel dat bij het openen stukgaat (een route die weg is, servercode die
+een fout geeft, een query op een kolom die niet meer bestaat) niet groen door de poort. Een
+unittest houdt die lijst bij met de router.
+
 Uitbreiden doe je **reactief**: elke keer dat er in productie iets stukgaat, komt er
 een test bij die precies dat geval afdekt. Zo groeit het vangnet mee met je echte
 fouten in plaats van met bedachte scenario's.

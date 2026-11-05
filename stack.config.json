@@ -1,0 +1,16 @@
+{
+  "$beschrijving": [
+    "Keuzes die per app verschillen en waar de kwaliteitspoort naar luistert.",
+    "Dit bestand is van het project: /stagetwo-tier1:updaten raakt het nooit aan.",
+    "",
+    "open_tabellen: tabellen uit migrations/ die bewust gedeeld zijn: iedereen die binnen is,",
+    "ziet alle rijen. Per tabel een reden. Elke andere tabel krijgt een A/B-test in de tests van",
+    "de servercode (controleerAfscherming uit tests/helpers/afscherming.ts): gebruiker B ziet,",
+    "wijzigt en verwijdert de rij van gebruiker A niet. guard:tabellen-tests controleert dat.",
+    "Voorbeeld:",
+    "  \"open_tabellen\": { \"feestdagen\": \"kalender voor iedereen binnen, geen persoonsgegevens\" }"
+  ],
+  "open_tabellen": {
+    "items": "voorbeeldlijst van de template: iedereen binnen ziet de hele lijst, de kolom door legt vast wie iets toevoegde"
+  }
+}

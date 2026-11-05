@@ -89,9 +89,14 @@ beoordelaar van je werk, dus wat de tests niet dekken, dekt niemand.
 - **Servercode gewijzigd?** Een test naast de route, in `worker/`, die in Node draait met
   de nagebootste D1 uit `tests/helpers/d1.ts`. Het bestand begint met
   `// @vitest-environment node`; het patroon staat in `worker/index.test.ts`. Test ook
-  wat er níet mag: zonder gebruiker een 401, en gebruiker A ziet de gegevens van B niet.
+  wat er níet mag: zonder gebruiker een 401, en gebruiker B ziet de gegevens van A niet
+  (per tabel `controleerAfscherming` uit `tests/helpers/afscherming.ts`).
 - **Nieuw scherm?** Een test in `src/` naast het scherm, of breid de end-to-end test in
   `e2e/` uit als het de belangrijkste route raakt.
+- **Nieuw onderdeel (een eigen hoofdscherm met een eigen pad)?** Een regel in
+  `src/onderdelen.ts`. De browsertest `e2e/onderdelen.spec.ts` opent het dan vanzelf en kijkt
+  of het zonder fout opent en zijn kop toont; `tests/unit/onderdelen.test.ts` is rood als een
+  nieuw pad in de router niet in die lijst staat.
 
 De CI blokkeert een PR die productiecode wijzigt (in `src/`, `worker/` of `migrations/`)
 zonder één enkele test aan te raken.
@@ -115,8 +120,9 @@ gh pr create --draft
 ```
 
 Altijd als concept (draft). Zolang de PR een concept is, draait bij elke push alleen de
-snelle check `Code`, en de workflow `Preview uitrollen` zet de nieuwe versie online. De zware
-check `Database en end-to-end` wacht tot stap 7. Zo kost een tussenstap minuten in plaats van
+snelle check `Code`; is die groen, dan zet de workflow `Preview uitrollen` de nieuwe versie
+online (is `Code` rood, dan komt er geen nieuwe preview: repareer eerst). De zware check
+`Database en end-to-end` wacht tot stap 7, en start dan pas als `Code` groen is. Zo kost een tussenstap minuten in plaats van
 een volle poort, en ziet de gebruiker geen rode tussenstanden.
 
 Vul het PR-formulier volledig in. De regel `Cloudflare-preview:` is niet optioneel: die
@@ -211,6 +217,7 @@ systeem bij, dan werkt die functie pas als de owner het geheim heeft gezet.
 | `guard:secrets` | er staat mogelijk een sleutel in de code of in de bundel. **Altijd zelf naar kijken**, dit is de gevaarlijkste |
 | `guard:escapes` | er is een typefout weggemoffeld (`any`, `@ts-ignore`, `as unknown as`). Los de echte fout op |
 | `guard:migrations` | je migratie kan data vernietigen; lees de melding en bevestig bewust |
+| `guard:tabellen-tests` | een tabel heeft geen A/B-test (`controleerAfscherming`) en staat niet in `open_tabellen` in `stack.config.json`. In deze versie nog een waarschuwing, vanaf de volgende uitgave rood |
 | `guard:template` | je wijzigde een bestand van de gedeelde template. Draai het terug en meld het bij Stage Two; wil je de nieuwste versie van de template, dan is dat `/stagetwo-tier1:updaten` |
 | `guard:cloudflare` | `wrangler.jsonc` houdt zich niet aan de afspraken: andere opslag dan D1 en R2, geen eigen D1 en R2 voor de preview, een tweede adres naast het adres achter Access, of `OMGEVING=lokaal`. De melding zegt welke |
 | Database en end-to-end | de belangrijkste route werkt niet in de gebouwde app, of een migratie faalt op een lege database. Draai `pnpm test:e2e` en kijk wat er misgaat. Bij een concept-PR staat deze check op overgeslagen: dat is de bedoeling, hij draait bij `gh pr ready` |

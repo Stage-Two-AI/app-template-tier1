@@ -344,6 +344,15 @@ bijgewerkt. De zware check `Database en end-to-end` draait pas als de PR op klaa
 op klaar zetten start alles opnieuw. Zo wacht niemand per tussenstap op een browsertest, en
 kost bouwen veel minder Actions-minuten.
 
+**De zware check wacht op de snelle.** `Database en end-to-end` start pas als `Code` groen is.
+Is `Code` rood, dan kost de zware check geen minuten.
+
+**De preview wacht op `Code`.** De job `Code` bouwt de app één keer, met de testbalk, en
+bewaart dat als de preview, alleen als al zijn controles groen zijn (ook de controle op
+geheimen in die bundel). `Preview uitrollen` zet hem daarna online. Bij een concept is dat een
+à twee minuten na de push; bij een PR die klaar is, na de hele poort. Is alleen de browsertest
+rood, dan komt de preview er wel, zodat je kunt zien wat er misgaat.
+
 **Het vaste preview-adres.** Naast de preview per pull request (`pr-<nummer>-...`) heeft
 elke app één vast adres, `actueel-...`, dat altijd de laatst gepushte PR toont. Dat kan de
 gebruiker open laten staan en verversen. Staan er twee PR's tegelijk open, dan toont het

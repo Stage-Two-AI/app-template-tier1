@@ -115,8 +115,9 @@ gh pr create --draft
 ```
 
 Altijd als concept (draft). Zolang de PR een concept is, draait bij elke push alleen de
-snelle check `Code`, en de workflow `Preview uitrollen` zet de nieuwe versie online. De zware
-check `Database en end-to-end` wacht tot stap 7. Zo kost een tussenstap minuten in plaats van
+snelle check `Code`; is die groen, dan zet de workflow `Preview uitrollen` de nieuwe versie
+online (is `Code` rood, dan komt er geen nieuwe preview: repareer eerst). De zware check
+`Database en end-to-end` wacht tot stap 7, en start dan pas als `Code` groen is. Zo kost een tussenstap minuten in plaats van
 een volle poort, en ziet de gebruiker geen rode tussenstanden.
 
 Vul het PR-formulier volledig in. De regel `Cloudflare-preview:` is niet optioneel: die

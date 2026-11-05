@@ -27,6 +27,12 @@ permissions:
 
 jobs:
   # Snelle controles: geen database nodig, klaar in ongeveer een minuut.
+  #
+  # Deze job bouwt ook de preview: met de testbalk, zonder sleutels. Is alles groen, dan
+  # bewaart hij de gebouwde schermen en servercode als artifact `preview-dist`, en zet
+  # preview-uitrollen.yml (altijd de versie van main) het online. Zo wordt de app per push één
+  # keer gebouwd in plaats van in een losse preview-job nog eens, en komt er alleen een preview
+  # van code die door deze controles is gekomen.
   checks:
     name: Code
     runs-on: ubuntu-latest
@@ -70,7 +76,10 @@ jobs:
       - name: Unittests
         run: pnpm test
 
-      - name: Bouwt het echt
+      # Eén keer bouwen, met de testbalk: dat is de bouwcontrole én de preview.
+      - name: Bouwt het echt (testomgeving)
+        env:
+          VITE_OMGEVING: test
         run: pnpm build
 
       - name: Guard - geheimen in repo en bundel
@@ -94,6 +103,30 @@ jobs:
       - name: Guard - afspraken in wrangler.jsonc
         run: pnpm guard:cloudflare
 
+      # Als laatste, dus alleen als alles hierboven groen is (ook guard:secrets op de bundel).
+      # Alleen voor een PR uit deze repo: een fork krijgt geen preview.
+      # De schermen (dist/client) en de servercode (dist/<app>/index.js). De config van de
+      # pull request gaat niet mee: preview-uitrollen.yml maakt die uit main.
+      - name: Gebouwde preview klaarzetten
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          mkdir -p "$RUNNER_TEMP/preview"
+          cp -r dist/client "$RUNNER_TEMP/preview/client"
+          worker=$(find dist -mindepth 2 -maxdepth 2 -name index.js -not -path 'dist/client/*' | head -1)
+          [ -n "$worker" ] || { echo "::error::de gebouwde servercode (dist/<app>/index.js) ontbreekt"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/preview/worker"
+          cp -r "$(dirname "$worker")"/. "$RUNNER_TEMP/preview/worker/"
+          rm -f "$RUNNER_TEMP/preview/worker/wrangler.json"
+
+      - name: Gebouwde preview bewaren
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-artifact@v7
+        with:
+          name: preview-dist
+          path: ${{ runner.temp }}/preview
+          retention-days: 3
+          if-no-files-found: error
+
   # De hele keten in een echte browser: de gebouwde schermen en servercode in de lokale
   # Workers-omgeving, met een lokale D1 waarop alle migraties draaien. Geen sleutels, en
   # niets bij Cloudflare wordt aangeraakt. De naam blijft gelijk aan die op het andere spoor,
@@ -102,8 +135,11 @@ jobs:
   # Niet bij een concept-PR: zie `ready_for_review` bovenaan. De overgeslagen job telt voor
   # GitHub als geslaagd, maar dat is veilig: een concept kan niet mergen, en op klaar zetten
   # start een nieuwe run die dan wel alles doet (de check staat meteen weer op "bezig").
+  # En pas als de job Code groen is (`needs: checks`): is Code rood, dan kost deze job geen
+  # minuten.
   database:
     name: Database en end-to-end
+    needs: checks
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:

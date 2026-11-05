@@ -14,6 +14,18 @@ Gaat het om een fout die in productie optreedt? Kijk dan eerst in Sentry, via de
 Sentry-koppeling in claude.ai: daar staat welke fout, waar in de code en hoe vaak. Is die
 koppeling er niet, vraag de gebruiker dan om de melding of een schermafbeelding.
 
+**Lees bij de start stil het logboek mee.** In de architectuur-repo van het bedrijf staat
+`docs/logboek.md`: per gemergde pull request wat er met de hand is ingesteld, welke besluiten
+vielen en wat andere onderdelen raakte. Lees de laatste regels, als achtergrond bij je werk:
+
+```bash
+gh api repos/<org>/architectuur/contents/docs/logboek.md -H "Accept: application/vnd.github.raw" | tail -n 20
+```
+
+In Claude Code doet de skill verder-werken van de plugin dit al. Lees het niet voor en vat
+het niet samen voor de gebruiker, tenzij hij erom vraagt of er iets in staat dat zijn vraag
+direct raakt. Geen logboek of geen toegang: ga gewoon door.
+
 Is het verzoek groter dan één zin? Knip het op. **Eén pull request = één onderwerp.**
 Grote PR's zijn niet te beoordelen en er verdwijnt van alles ongemerkt in.
 
@@ -160,7 +172,14 @@ openen en hij bewijst niet dat de gebouwde versie werkt. Lokaal kijken voor jeze
 
 ## Stap 7: Op klaar zetten, wachten en repareren
 
-Zegt de gebruiker dat het goed is ("prima", "zo laten", "zet maar live"), dan:
+Zegt de gebruiker dat het goed is ("prima", "zo laten", "zet maar live"), dan gaat de pull
+request op klaar. Vul eerst zelf het kopje **Voor de architectuur** in de PR-tekst in, zonder
+de gebruiker iets te vragen: haal het uit het gesprek en de wijziging
+(`gh pr edit <nummer> --body-file <bestand>`). Drie regels: wat er met de hand is ingesteld
+(wat en waar, bijvoorbeeld een geheim dat de owner zette of een instelling in een dashboard),
+of hier een besluit viel (welk, in één zin), en of dit een ander onderdeel of een andere app
+raakt (welk). Niets van toepassing: `nee`. Na de merge komt het in het logboek van de
+architectuur-repo. Daarna:
 
 ```bash
 pnpm test:e2e      # de hele keten in een echte browser, lokaal, geen Docker nodig

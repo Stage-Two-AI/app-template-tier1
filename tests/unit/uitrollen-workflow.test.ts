@@ -78,6 +78,23 @@ describe("uitrollen.yml: productie", () => {
     expect(check?.env?.ACCESS_AUD).toBe(gh("vars.ACCESS_AUD"));
   });
 
+  it("waarschuwt bij elke productie-uitrol als Sentry uit staat of de DSN vreemd is", () => {
+    const check = prod.steps.find((s) => s.id === "check");
+    expect(check?.env?.VITE_SENTRY_DSN).toBe(gh("vars.VITE_SENTRY_DSN"));
+    expect(check?.shell).toBe("bash");
+    const run = check?.run ?? "";
+    expect(run).toContain('if [ -z "$VITE_SENTRY_DSN" ]; then');
+    expect(run).toContain("::warning::Foutbewaking (Sentry) staat uit");
+    expect(run).toContain("::warning::VITE_SENTRY_DSN ziet er niet uit als een DSN van Sentry");
+    const patroon = /=~ \^(.+)\$ \]\]/.exec(run)?.[1];
+    const dsn = new RegExp(`^${patroon}$`);
+    expect(dsn.test("https://abc123@o1.ingest.sentry.io/42")).toBe(true);
+    expect(dsn.test("https://abc123@o4507.ingest.de.sentry.io/4508")).toBe(true);
+    expect(dsn.test("abc123")).toBe(false);
+    // Een waarschuwing, geen stop.
+    expect(run.slice(run.indexOf("VITE_SENTRY_DSN")).split("fi")[0]).not.toContain("skip=true");
+  });
+
   it("migreert eerst de testdatabase, dan productie, en rolt daarna pas uit", () => {
     const test = stapIndex(prod, (s) =>
       (s.run ?? "").includes("migrations apply DB --remote --env preview"),

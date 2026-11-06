@@ -11,7 +11,7 @@
 
 <!-- stack:begin -->
 <!-- Alles hieronder komt uit de app-template en wordt bijgewerkt met
-     /stagetwo-tier1:updaten, als pull request. Wijzig het niet hier; meld het bij Stage Two. -->
+     /stagetwo-tier1:updaten, als pull request. Wijzig het niet hier; zie "Wat je niet aanpast" onderaan. -->
 
 Dit bestand geldt voor **elke** agent die in deze repo werkt: Claude Code, Codex, Cursor,
 Copilot of een mens zonder agent. Er is geen tweede set afspraken ergens anders.
@@ -173,6 +173,10 @@ nieuwe computer klaarzetten), `/stagetwo-tier1:nieuwe-app`, `/stagetwo-tier1:ver
 `tests/unit/`, `docs/WERKWIJZE.md`, `docs/routes/` en dit bestand onder de markering komen uit
 de gedeelde template en worden bijgewerkt met `/stagetwo-tier1:updaten`, als pull request. De check
 `guard:template` laat een PR die eraan komt rood staan; in Claude Code houdt de hook van de
-Stage Two-plugin de wijziging al bij de toetsaanslag tegen. Klopt er iets niet, meld het dan
-bij Stage Two: dan krijgt elk project de verbetering, in plaats van dit project alleen.
+Stage Two-plugin de wijziging al bij de toetsaanslag tegen. Klopt er iets niet, los het dan op in
+de eigen code van de app, met Claude in `/stagetwo-tier1:verder-werken`. Is een templatebestand
+aanpassen echt nodig, dan kan dat bewust, met de regel `Bevestigd: templatebestanden gewijzigd` in
+de PR-tekst; de volgende update slaat dat bestand dan over en zegt dat. Je hoeft op niemand te
+wachten. Wil je dat de verbetering in een volgende versie van de template komt, voor elk
+project, geef het dan door aan Stage Two.
 <!-- stack:end -->

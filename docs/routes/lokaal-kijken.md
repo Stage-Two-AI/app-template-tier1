@@ -87,8 +87,9 @@ cd <map>
 pnpm install
 ```
 
-Lukt dit niet binnen tien minuten, vraag het dan aan Stage Two in plaats van door te
-worstelen. Dit is inrichting, geen bouwen.
+Lukt dit niet binnen tien minuten, draai dan `/stagetwo-tier1:installatie` in plaats van door
+te worstelen: die zet Git, Node en pnpm op deze computer goed en zegt wat er nog ontbreekt. Dit
+is inrichting, geen bouwen.
 
 ## Starten
 

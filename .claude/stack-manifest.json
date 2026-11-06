@@ -83,6 +83,7 @@
       "tests/unit/uitrollen-workflow.test.ts",
       "tests/unit/testgegevens.test.ts",
       "tests/unit/lokaal.test.ts",
+      "scripts/lib/onderdelen.mjs",
       "tests/unit/onderdelen.test.ts",
       "e2e/onderdelen.spec.ts",
       "tests/unit/template-afhankelijk.test.ts",

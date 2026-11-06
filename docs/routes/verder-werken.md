@@ -236,7 +236,7 @@ systeem bij, dan werkt die functie pas als de owner het geheim heeft gezet.
 | `guard:secrets` | er staat mogelijk een sleutel in de code of in de bundel. **Altijd zelf naar kijken**, dit is de gevaarlijkste |
 | `guard:escapes` | er is een typefout weggemoffeld (`any`, `@ts-ignore`, `as unknown as`). Los de echte fout op |
 | `guard:migrations` | je migratie kan data vernietigen; lees de melding en bevestig bewust |
-| `guard:tabellen-tests` | een tabel heeft geen A/B-test (`controleerAfscherming`) en staat niet in `open_tabellen` in `stack.config.json`. In deze versie nog een waarschuwing, vanaf de volgende uitgave rood |
+| `guard:tabellen-tests` | een tabel heeft geen A/B-test (`controleerAfscherming`) en staat niet in `open_tabellen` in `stack.config.json`. In deze versie nog een waarschuwing, vanaf de volgende uitgave rood. Voor een tabel die er al stond, schrijft `/stagetwo-tier1:updaten` de test in de update-PR; een nieuwe tabel krijgt hem van jou |
 | `guard:template` | je wijzigde een bestand van de gedeelde template. Draai het terug en meld het bij Stage Two; wil je de nieuwste versie van de template, dan is dat `/stagetwo-tier1:updaten` |
 | `guard:cloudflare` | `wrangler.jsonc` houdt zich niet aan de afspraken: andere opslag dan D1 en R2, geen eigen D1 en R2 voor de preview, een tweede adres naast het adres achter Access, of `OMGEVING=lokaal`. De melding zegt welke |
 | Database en end-to-end | de belangrijkste route werkt niet in de gebouwde app, of een migratie faalt op een lege database. Draai `pnpm test:e2e` en kijk wat er misgaat. Bij een concept-PR staat deze check op overgeslagen: dat is de bedoeling, hij draait bij `gh pr ready` |

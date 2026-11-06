@@ -76,6 +76,9 @@ if (zonder.length === 0) {
 const uitleg = [
   ...zonder.map((t) => `- ${t}`),
   "",
+  "Een tabel die er al stond, krijgt zijn test vanzelf: /stagetwo-tier1:updaten schrijft hem in de",
+  "pull request van de update. Een nieuwe tabel krijgt hem bij het bouwen.",
+  "",
   "Zet per tabel een A/B-test naast de route in worker/ (de hulp staat in tests/helpers/afscherming.ts):",
   "",
   '  it("<tabel>: B ziet de rij van A niet", async () => {',

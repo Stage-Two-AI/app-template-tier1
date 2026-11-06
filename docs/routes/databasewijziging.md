@@ -108,10 +108,28 @@ it("een nieuw item staat op open", () => {
 });
 ```
 
-Gaat het om gegevens per gebruiker, test dan ook wat er níet mag: maak een rij voor
-gebruiker B, vraag de lijst op als gebruiker A, verwacht niets. Er is geen andere test die
-zo'n fout vangt; de app ziet er van buiten volstrekt normaal uit terwijl iedereen alles kan
-opvragen.
+Elke nieuwe tabel krijgt ook een A/B-test: gebruiker A maakt via de API een rij, gebruiker B
+probeert hem te zien, te wijzigen en te verwijderen, en mag niets. De hulp
+`controleerAfscherming` uit `tests/helpers/afscherming.ts` doet dat in één aanroep, met twee
+echte gebruikers achter Access:
+
+```ts
+await controleerAfscherming({
+  tabel: "notities",
+  maakRijAlsA: async (a) => {
+    const r = await a.vraag("/api/notities", { method: "POST", body: { tekst: "van A" } });
+    return ((await r.json()) as { id: number }).id;
+  },
+  lijst: "/api/notities",
+  rij: (id) => `/api/notities/${id}`,
+});
+```
+
+Er is geen andere test die zo'n fout vangt; de app ziet er van buiten volstrekt normaal uit
+terwijl iedereen alles kan opvragen. Is een tabel bewust gedeeld (iedereen binnen ziet alle
+rijen, zoals de voorbeeldtabel `items`), zet hem dan met een reden in `stack.config.json` bij
+`open_tabellen`. `guard:tabellen-tests` kijkt of elke tabel het een of het ander heeft; in deze
+versie is dat nog een waarschuwing, vanaf de volgende uitgave van Stage Two rood.
 
 ```bash
 pnpm test

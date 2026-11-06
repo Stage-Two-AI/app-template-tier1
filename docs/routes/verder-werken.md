@@ -14,6 +14,18 @@ Gaat het om een fout die in productie optreedt? Kijk dan eerst in Sentry, via de
 Sentry-koppeling in claude.ai: daar staat welke fout, waar in de code en hoe vaak. Is die
 koppeling er niet, vraag de gebruiker dan om de melding of een schermafbeelding.
 
+**Lees bij de start stil het logboek mee.** In de architectuur-repo van het bedrijf staat
+`docs/logboek.md`: per gemergde pull request wat er met de hand is ingesteld, welke besluiten
+vielen en wat andere onderdelen raakte. Lees de laatste regels, als achtergrond bij je werk:
+
+```bash
+gh api repos/<org>/architectuur/contents/docs/logboek.md -H "Accept: application/vnd.github.raw" | tail -n 20
+```
+
+In Claude Code doet de skill verder-werken van de plugin dit al. Lees het niet voor en vat
+het niet samen voor de gebruiker, tenzij hij erom vraagt of er iets in staat dat zijn vraag
+direct raakt. Geen logboek of geen toegang: ga gewoon door.
+
 Is het verzoek groter dan één zin? Knip het op. **Eén pull request = één onderwerp.**
 Grote PR's zijn niet te beoordelen en er verdwijnt van alles ongemerkt in.
 
@@ -89,9 +101,14 @@ beoordelaar van je werk, dus wat de tests niet dekken, dekt niemand.
 - **Servercode gewijzigd?** Een test naast de route, in `worker/`, die in Node draait met
   de nagebootste D1 uit `tests/helpers/d1.ts`. Het bestand begint met
   `// @vitest-environment node`; het patroon staat in `worker/index.test.ts`. Test ook
-  wat er níet mag: zonder gebruiker een 401, en gebruiker A ziet de gegevens van B niet.
+  wat er níet mag: zonder gebruiker een 401, en gebruiker B ziet de gegevens van A niet
+  (per tabel `controleerAfscherming` uit `tests/helpers/afscherming.ts`).
 - **Nieuw scherm?** Een test in `src/` naast het scherm, of breid de end-to-end test in
   `e2e/` uit als het de belangrijkste route raakt.
+- **Nieuw onderdeel (een eigen hoofdscherm met een eigen pad)?** Een regel in
+  `src/onderdelen.ts`. De browsertest `e2e/onderdelen.spec.ts` opent het dan vanzelf en kijkt
+  of het zonder fout opent en zijn kop toont; `tests/unit/onderdelen.test.ts` is rood als een
+  nieuw pad in de router niet in die lijst staat.
 
 De CI blokkeert een PR die productiecode wijzigt (in `src/`, `worker/` of `migrations/`)
 zonder één enkele test aan te raken.
@@ -115,8 +132,9 @@ gh pr create --draft
 ```
 
 Altijd als concept (draft). Zolang de PR een concept is, draait bij elke push alleen de
-snelle check `Code`, en de workflow `Preview uitrollen` zet de nieuwe versie online. De zware
-check `Database en end-to-end` wacht tot stap 7. Zo kost een tussenstap minuten in plaats van
+snelle check `Code`; is die groen, dan zet de workflow `Preview uitrollen` de nieuwe versie
+online (is `Code` rood, dan komt er geen nieuwe preview: repareer eerst). De zware check
+`Database en end-to-end` wacht tot stap 7, en start dan pas als `Code` groen is. Zo kost een tussenstap minuten in plaats van
 een volle poort, en ziet de gebruiker geen rode tussenstanden.
 
 Vul het PR-formulier volledig in. De regel `Cloudflare-preview:` is niet optioneel: die
@@ -154,7 +172,14 @@ openen en hij bewijst niet dat de gebouwde versie werkt. Lokaal kijken voor jeze
 
 ## Stap 7: Op klaar zetten, wachten en repareren
 
-Zegt de gebruiker dat het goed is ("prima", "zo laten", "zet maar live"), dan:
+Zegt de gebruiker dat het goed is ("prima", "zo laten", "zet maar live"), dan gaat de pull
+request op klaar. Vul eerst zelf het kopje **Voor de architectuur** in de PR-tekst in, zonder
+de gebruiker iets te vragen: haal het uit het gesprek en de wijziging
+(`gh pr edit <nummer> --body-file <bestand>`). Drie regels: wat er met de hand is ingesteld
+(wat en waar, bijvoorbeeld een geheim dat de owner zette of een instelling in een dashboard),
+of hier een besluit viel (welk, in één zin), en of dit een ander onderdeel of een andere app
+raakt (welk). Niets van toepassing: `nee`. Na de merge komt het in het logboek van de
+architectuur-repo. Daarna:
 
 ```bash
 pnpm test:e2e      # de hele keten in een echte browser, lokaal, geen Docker nodig
@@ -211,6 +236,7 @@ systeem bij, dan werkt die functie pas als de owner het geheim heeft gezet.
 | `guard:secrets` | er staat mogelijk een sleutel in de code of in de bundel. **Altijd zelf naar kijken**, dit is de gevaarlijkste |
 | `guard:escapes` | er is een typefout weggemoffeld (`any`, `@ts-ignore`, `as unknown as`). Los de echte fout op |
 | `guard:migrations` | je migratie kan data vernietigen; lees de melding en bevestig bewust |
+| `guard:tabellen-tests` | een tabel heeft geen A/B-test (`controleerAfscherming`) en staat niet in `open_tabellen` in `stack.config.json`. In deze versie nog een waarschuwing, vanaf de volgende uitgave rood. Voor een tabel die er al stond, schrijft `/stagetwo-tier1:updaten` de test in de update-PR; een nieuwe tabel krijgt hem van jou |
 | `guard:template` | je wijzigde een bestand van de gedeelde template. Draai het terug en meld het bij Stage Two; wil je de nieuwste versie van de template, dan is dat `/stagetwo-tier1:updaten` |
 | `guard:cloudflare` | `wrangler.jsonc` houdt zich niet aan de afspraken: andere opslag dan D1 en R2, geen eigen D1 en R2 voor de preview, een tweede adres naast het adres achter Access, of `OMGEVING=lokaal`. De melding zegt welke |
 | Database en end-to-end | de belangrijkste route werkt niet in de gebouwde app, of een migratie faalt op een lege database. Draai `pnpm test:e2e` en kijk wat er misgaat. Bij een concept-PR staat deze check op overgeslagen: dat is de bedoeling, hij draait bij `gh pr ready` |

@@ -78,6 +78,23 @@ describe("uitrollen.yml: productie", () => {
     expect(check?.env?.ACCESS_AUD).toBe(gh("vars.ACCESS_AUD"));
   });
 
+  it("waarschuwt bij elke productie-uitrol als Sentry uit staat of de DSN vreemd is", () => {
+    const check = prod.steps.find((s) => s.id === "check");
+    expect(check?.env?.VITE_SENTRY_DSN).toBe(gh("vars.VITE_SENTRY_DSN"));
+    expect(check?.shell).toBe("bash");
+    const run = check?.run ?? "";
+    expect(run).toContain('if [ -z "$VITE_SENTRY_DSN" ]; then');
+    expect(run).toContain("::warning::Foutbewaking (Sentry) staat uit");
+    expect(run).toContain("::warning::VITE_SENTRY_DSN ziet er niet uit als een DSN van Sentry");
+    const patroon = /=~ \^(.+)\$ \]\]/.exec(run)?.[1];
+    const dsn = new RegExp(`^${patroon}$`);
+    expect(dsn.test("https://abc123@o1.ingest.sentry.io/42")).toBe(true);
+    expect(dsn.test("https://abc123@o4507.ingest.de.sentry.io/4508")).toBe(true);
+    expect(dsn.test("abc123")).toBe(false);
+    // Een waarschuwing, geen stop.
+    expect(run.slice(run.indexOf("VITE_SENTRY_DSN")).split("fi")[0]).not.toContain("skip=true");
+  });
+
   it("migreert eerst de testdatabase, dan productie, en rolt daarna pas uit", () => {
     const test = stapIndex(prod, (s) =>
       (s.run ?? "").includes("migrations apply DB --remote --env preview"),
@@ -106,31 +123,49 @@ describe("uitrollen.yml: productie", () => {
   });
 });
 
-describe("uitrollen.yml: de PR-job bouwt alleen, zonder sleutels", () => {
-  const pr = job("preview");
+describe("uitrollen.yml: alleen productie", () => {
+  it("draait alleen bij een push op main en heeft geen preview-job meer", () => {
+    expect(uitrollen.on).toEqual({ push: { branches: ["main"] } });
+    expect(Object.keys(uitrollen.jobs)).toEqual(["productie"]);
+  });
+});
 
-  it("draait alleen op een PR uit deze repo, zonder omgeving en zonder secrets", () => {
-    expect(pr.if).toContain("github.event_name == 'pull_request'");
-    expect(pr.if).toContain("head.repo.full_name == github.repository");
-    expect(omgeving(pr)).toBeUndefined();
-    expect(JSON.stringify(pr)).not.toContain("secrets.");
-    expect(pr.permissions).toEqual({ contents: "read" });
+describe("ci.yml: de job Code bouwt ook de preview, zonder sleutels", () => {
+  const code = job("checks", lees("ci.yml"));
+
+  it("noemt geen omgeving en leest geen secrets", () => {
+    expect(omgeving(code)).toBeUndefined();
+    expect(JSON.stringify(code)).not.toContain("secrets.");
+    expect(JSON.stringify(code)).not.toContain("versions upload");
   });
 
-  it("bouwt met de testbalk en bewaart schermen en servercode, zonder de config van de PR", () => {
-    const bouw = pr.steps.find((s) => s.run === "pnpm build");
-    expect(bouw?.env?.VITE_OMGEVING).toBe("test");
-    expect(runs(pr)).toContain('rm -f "$RUNNER_TEMP/preview/worker/wrangler.json"');
-    const bewaar = pr.steps.find((s) => s.uses?.startsWith("actions/upload-artifact"));
+  it("bouwt één keer, met de testbalk", () => {
+    const bouwen = code.steps.filter((s) => s.run === "pnpm build");
+    expect(bouwen).toHaveLength(1);
+    expect(bouwen[0]?.env?.VITE_OMGEVING).toBe("test");
+  });
+
+  it("bewaart schermen en servercode als laatste, zonder de config van de PR, alleen voor deze repo", () => {
+    expect(runs(code)).toContain('rm -f "$RUNNER_TEMP/preview/worker/wrangler.json"');
+    const bewaar = code.steps.at(-1);
+    expect(bewaar?.uses).toMatch(/^actions\/upload-artifact@/);
     expect(bewaar?.with?.name).toBe("preview-dist");
+    expect(bewaar?.if).toBe("github.event.pull_request.head.repo.full_name == github.repository");
+    const geheimen = stapIndex(code, (s) => s.run === "pnpm guard:secrets");
+    const klaar = stapIndex(code, (s) => s.name === "Gebouwde preview klaarzetten");
+    expect(klaar).toBeGreaterThan(geheimen);
   });
 });
 
 describe("preview-uitrollen.yml: de upload vanaf main", () => {
   const up = job("preview", previewUitrollen);
 
-  it("draait na Uitrollen, in omgeving preview, met main uitgecheckt", () => {
-    expect(Object.keys(previewUitrollen.on)).toEqual(["workflow_run"]);
+  it("draait na de Kwaliteitspoort, in omgeving preview, met main uitgecheckt", () => {
+    expect(previewUitrollen.on).toEqual({
+      workflow_run: { workflows: ["Kwaliteitspoort"], types: ["completed"] },
+    });
+    // Het artifact beslist, niet de uitkomst van de hele run; alleen afgebroken slaat over.
+    expect(up.if).toContain("github.event.workflow_run.conclusion != 'cancelled'");
     expect(omgeving(up)).toBe("preview");
     const checkout = up.steps.find((s) => s.uses?.startsWith("actions/checkout"));
     expect(checkout?.with?.ref).toBe("main");
@@ -209,10 +244,15 @@ describe("kwaliteitspoort", () => {
     expect(typen).toEqual(["opened", "synchronize", "reopened", "ready_for_review"]);
   });
 
-  it("draait de snelle job altijd, de zware alleen buiten een concept-PR", () => {
+  it("draait de snelle job altijd, de zware alleen buiten een concept-PR en pas als Code groen is", () => {
     expect(job("checks", ci).if).toBeUndefined();
+    expect((job("database", ci) as Job & { needs?: string }).needs).toBe("checks");
     // biome-ignore lint/suspicious/noTemplateCurlyInString: een uitdrukking van GitHub Actions, geen JavaScript-template
     expect(job("database", ci).if).toBe("${{ !github.event.pull_request.draft }}");
+  });
+
+  it("draait in de job Code de A/B-test per tabel", () => {
+    expect(job("checks", ci).steps.map((s) => s.run)).toContain("pnpm guard:tabellen-tests");
   });
 
   it("bewaart de browser van Playwright tussen runs", () => {

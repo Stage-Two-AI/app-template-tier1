@@ -24,6 +24,11 @@
  *     });
  *   });
  *
+ * Geeft de lijst geen kale lijst terug maar bijvoorbeeld `{ "notities": [...] }`, zeg dan met
+ * `rijenUit: (antwoord) => (antwoord as { notities: unknown }).notities` waar de rijen staan.
+ * Zonder dat is de test rood: een antwoord dat geen lijst is, zou anders als lege lijst tellen,
+ * en dan ziet de test een lek nooit.
+ *
  * Deze hulp is van de template en komt met elke versie mee.
  */
 import { expect } from "vitest";
@@ -89,6 +94,8 @@ export async function controleerAfscherming(o: {
   maakRijAlsA: (a: Actor) => Promise<string | number>;
   /** Het pad van de lijst, als die er is: B mag de rij van A daarin niet zien. */
   lijst?: string;
+  /** Waar de rijen in het antwoord van `lijst` staan, als dat geen kale lijst is. */
+  rijenUit?: (antwoord: unknown) => unknown;
   /** Het pad van één rij, als dat er is: B mag hem niet lezen, wijzigen of verwijderen. */
   rij?: (id: string | number) => string;
   /** De kolom met de sleutel. Standaard `id`. */
@@ -151,8 +158,14 @@ export async function controleerAfscherming(o: {
     if (o.lijst) {
       const r = await b.vraag(o.lijst);
       if (r.status === 200) {
-        const lijst = (await r.json()) as unknown;
-        const rijen = Array.isArray(lijst) ? (lijst as Record<string, unknown>[]) : [];
+        const antwoord = (await r.json()) as unknown;
+        const lijst = o.rijenUit ? o.rijenUit(antwoord) : antwoord;
+        if (!Array.isArray(lijst)) {
+          throw new Error(
+            `${o.tabel}: ${o.lijst} gaf geen lijst maar ${JSON.stringify(antwoord).slice(0, 80)}; geef met rijenUit aan waar de rijen staan`,
+          );
+        }
+        const rijen = lijst as Record<string, unknown>[];
         expect(
           rijen.filter((x) => String(x?.[sleutel]) === String(id)),
           `${o.tabel}: B ziet de rij van A in ${o.lijst}`,

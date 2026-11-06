@@ -28,7 +28,9 @@ De uitgangspunten waar alles uit volgt:
   een nieuwe versie en zet met `/stagetwo-tier1:updaten` per app het update-voorstel klaar; een
   bouwer keurt het goed. Het abonnement houdt de omgeving niet bij: beheer en werking blijven
   na de overdracht bij je bedrijf. Systeembeheer, een garantie op beschikbaarheid en meer werk
-  aan je apps (op verzoek, op nacalculatie tegen €120 per uur exclusief btw) vallen erbuiten.
+  aan je apps vallen erbuiten: dat werk doen je bouwers zelf met hun assistent, en wie er hulp
+  bij wil, kan het op verzoek door Stage Two laten doen, op nacalculatie tegen €120 per uur
+  exclusief btw.
   Dependabot, een dienst van GitHub, stelt in elke app updates van de npm-pakketten voor, als
   pull request, ook zonder abonnement. De versies van de GitHub-workflows in
   `.github/workflows/` komen met een nieuwe versie van de template, omdat die workflows van de
@@ -68,7 +70,9 @@ mag of kan: gegevens bewaren, sleutels van andere systemen gebruiken, iets op va
 **Wat tier 1 niet is.** Er is ook tier 2, met Cloudflare en Supabase
 (`app-template-tier2`), voor apps die een volwaardige Postgres-database met
 beveiliging per rij nodig hebben. Een app zit op tier 1 of op tier 2. Overstappen
-van tier 1 naar tier 2 is herbouwen; dat doet Stage Two op verzoek, als betaald werk.
+van tier 1 naar tier 2 is herbouwen, met de inrichting van tier 2 (plugin, template en
+beheer-repo). Dat kan je organisatie zelf, met een bouwer en Claude; wie het liever uitbesteedt,
+kan het op verzoek als betaald werk door Stage Two laten doen.
 
 ---
 
@@ -179,7 +183,8 @@ In de tijdelijke stand draait de app op `<worker>.<subdomein>.workers.dev`, en z
 inrichting Access op dat adres. Het is een overbrugging, geen keuze voor de lange termijn:
 is het domein er, dan gaat de app naar de standaardstand en gaat workers.dev weer uit. Dat
 overstappen gaat met de inrichting in de beheer-repo: tijdens het project door Stage Two,
-na de overdracht door de owner van je organisatie, of op verzoek door Stage Two.
+na de overdracht door de owner van je organisatie (wie er hulp bij wil, kan het op verzoek als
+betaald werk door Stage Two laten doen).
 
 **De vaste afspraken in `wrangler.jsonc`.** De check `guard:cloudflare` houdt een PR tegen
 die er niet aan voldoet:
@@ -222,8 +227,9 @@ over uit de template, als een gewone wijziging via `/stagetwo-tier1:verder-werke
 
 **Een geaccepteerd risico.** De sleutel waarmee GitHub uitrolt, mag D1 en R2 van het hele
 Cloudflare-account beheren, niet van één app. Met weinig apps in een account is dat
-aanvaardbaar. Wil je organisatie het dichter, dan verdeelt Stage Two op verzoek de apps
-over accounts.
+aanvaardbaar. Wil je organisatie het dichter, dan verdeelt de owner de apps over meer
+Cloudflare-accounts, met een eigen beheer-repo per account (Stage Two kan dat op verzoek als
+betaald werk doen).
 
 ---
 

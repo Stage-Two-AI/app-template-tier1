@@ -121,7 +121,7 @@ function sleutelFouten(object, toegestaan, padVoorvoegsel) {
       fouten.push(`${pad} hoort er niet in: gegevens staan in D1, bestanden in R2.`);
     } else {
       fouten.push(
-        `${pad} staat niet op de lijst van toegestane sleutels. Is deze sleutel echt nodig, meld het dan bij Stage Two.`,
+        `${pad} staat niet op de lijst van toegestane sleutels. Haal hem weg, en zoek met Claude in /stagetwo-tier1:verder-werken een weg zonder deze sleutel.`,
       );
     }
   }

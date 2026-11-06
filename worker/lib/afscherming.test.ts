@@ -20,7 +20,7 @@ writeFileSync(
 );
 afterAll(() => rmSync(MAP, { recursive: true, force: true }));
 
-function maakApp(lek: boolean) {
+function maakApp(lek: boolean, verpakt = false) {
   const app = new Hono<Variabelen>().basePath("/api");
   app.use("*", async (c, next) => {
     const gebruiker = await wieIsHet(c.req.raw, c.env);
@@ -33,7 +33,7 @@ function maakApp(lek: boolean) {
     const { results } = await c.env.DB.prepare(`select * from notities where ${filter}`)
       .bind(c.var.gebruiker.email)
       .all();
-    return c.json(results);
+    return verpakt ? c.json({ notities: results }) : c.json(results);
   });
   app.post("/notities", async (c) => {
     const rij = await c.env.DB.prepare(
@@ -58,9 +58,9 @@ function maakApp(lek: boolean) {
   return app;
 }
 
-const opties = (lek: boolean) => ({
+const opties = (lek: boolean, verpakt = false) => ({
   tabel: "notities",
-  app: maakApp(lek),
+  app: maakApp(lek, verpakt),
   migraties: MAP,
   maakRijAlsA: async (a: {
     vraag: (pad: string, init?: { method?: string }) => Promise<Response>;
@@ -78,6 +78,20 @@ describe("controleerAfscherming (tier 1)", () => {
     await expect(controleerAfscherming(opties(true))).rejects.toThrow(
       /B ziet de rij van A|B leest/,
     );
+  });
+
+  it("is rood als de lijst geen lijst teruggeeft (bijvoorbeeld { notities: [...] })", async () => {
+    await expect(controleerAfscherming({ ...opties(false, true), rij: undefined })).rejects.toThrow(
+      /geen lijst/,
+    );
+  });
+
+  it("leest met rijenUit de rijen uit een verpakt antwoord, en ziet dan ook een lek", async () => {
+    const rijenUit = (antwoord: unknown) => (antwoord as { notities: unknown }).notities;
+    await controleerAfscherming({ ...opties(false, true), rijenUit });
+    await expect(
+      controleerAfscherming({ ...opties(true, true), rij: undefined, rijenUit }),
+    ).rejects.toThrow(/B ziet de rij van A/);
   });
 
   it("vraagt om een lijst of een rij", async () => {

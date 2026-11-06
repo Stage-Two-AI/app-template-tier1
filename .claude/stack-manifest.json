@@ -20,6 +20,11 @@
     "LICENSE-STAGE-TWO is het gebruiksrecht voor de onderdelen van Stage Two en komt",
     "met elke versie mee.",
     "",
+    "alsHetOntbreekt: bestanden van het project waar code van de template op leunt.",
+    "Ontbreekt zo'n bestand in de app, dan zet updaten de versie van de template neer;",
+    "staat het er, dan blijft het van het project. tests/unit/template-afhankelijk.test.ts",
+    "bewaakt dat elke import van de template op zo'n bestand uitkomt (sinds versie 40).",
+    "",
     "manifestFormaat zegt welke vorm dit bestand heeft; een oudere plugin stopt bij een",
     "nieuwer formaat in plaats van half werk te doen."
   ],
@@ -80,6 +85,7 @@
       "tests/unit/lokaal.test.ts",
       "tests/unit/onderdelen.test.ts",
       "e2e/onderdelen.spec.ts",
+      "tests/unit/template-afhankelijk.test.ts",
       "docs/WERKWIJZE.md",
       "docs/routes/verder-werken.md",
       "docs/routes/databasewijziging.md",
@@ -91,7 +97,8 @@
     },
     "tussenMarkeringen": {
       "AGENTS.md": "stack"
-    }
+    },
+    "alsHetOntbreekt": ["worker/env.ts", "worker/apparaten.json"]
   },
   "vanHetProject": [
     "stack.config.json",

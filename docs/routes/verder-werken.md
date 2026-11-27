@@ -131,6 +131,10 @@ git push -u origin <branch>
 gh pr create --draft
 ```
 
+**In de cloud** (een thread op claude.ai) werkt `gh pr` niet. Open de pull request daar met
+`gh api repos/<eigenaar>/<naam>/pulls -X POST -f title="..." -f head=<branch> -f base=main -F body=@<bestand> -F draft=true`,
+of met de GitHub-koppeling van de sessie (met `draft: true`).
+
 Altijd als concept (draft). Zolang de PR een concept is, draait bij elke push alleen de
 snelle check `Code`; is die groen, dan zet de workflow `Preview uitrollen` de nieuwe versie
 online (is `Code` rood, dan komt er geen nieuwe preview: repareer eerst). De zware check
@@ -186,6 +190,13 @@ pnpm test:e2e      # de hele keten in een echte browser, lokaal, geen Docker nod
 gh pr ready        # nu draait de volledige poort, ook Database en end-to-end
 gh pr checks --watch
 ```
+
+**In de cloud** gaan deze stappen zo: de PR-tekst bijwerken met
+`gh api repos/<eigenaar>/<naam>/pulls/<nummer> -X PATCH -F body=@<bestand>`; op klaar zetten
+met de GitHub-koppeling van de sessie (de pull request bijwerken met `draft: false`; lukt dat
+niet, vraag de gebruiker dan om op GitHub op **Ready for review** te klikken); en de checks
+volgen met `gh run list --branch <branch> --limit 10 --json name,status,conclusion,url`, tot ze
+allemaal klaar zijn.
 
 `pnpm test:e2e` bouwt de app, zet een lokale database klaar met alle migraties en klikt de
 belangrijkste route door. De eerste keer vraagt Playwright misschien om een browser:
